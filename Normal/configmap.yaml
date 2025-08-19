@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dotnet-config
+  namespace: helmtest
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  LOG_LEVEL: "Information"

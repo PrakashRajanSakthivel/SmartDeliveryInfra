@@ -1,0 +1,18 @@
+# Defaults - override these per environment
+replicaCount: 2
+image:
+  repository: mcr.microsoft.com/dotnet/samples
+  tag: aspnetapp
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+service:
+  type: ClusterIP  # Default service type
+  port: 80
+  targetPort: 8080
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50

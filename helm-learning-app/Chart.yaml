@@ -1,0 +1,5 @@
+apiVersion: v2
+name: dotnet-rollback-demo
+description: Focused on learning Helm rollbacks
+version: 0.1.0
+appVersion: "8.0"

@@ -1,0 +1,22 @@
+# Production environment values
+replicaCount: 5  # More replicas for production
+image:
+  repository: mcr.microsoft.com/dotnet/samples
+  tag: aspnetapp
+  pullPolicy: Always  # Always pull latest for production
+resources:
+  requests:
+    cpu: "200m"    # Higher resources for production
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+service:
+  type: ClusterIP  # Use ClusterIP in production with ingress
+  port: 80
+  targetPort: 8080
+autoscaling:
+  enabled: true    # Enable autoscaling for production
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70

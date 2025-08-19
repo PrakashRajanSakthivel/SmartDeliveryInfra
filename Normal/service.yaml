@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotnet-service
+  namespace: helmtest
+spec:
+  type: ClusterIP
+  selector:
+    app: dotnet-api
+  ports:
+  - port: 80       # External port (cluster-internal)
+    targetPort: 8080  # Must match containerPort

@@ -1,0 +1,22 @@
+# Demo values file for development environment
+replicaCount: 1  # Fewer replicas for dev
+image:
+  repository: mcr.microsoft.com/dotnet/samples
+  tag: aspnetapp
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: "50m"    # Lower resources for dev
+    memory: "64Mi"
+  limits:
+    cpu: "100m"
+    memory: "128Mi"
+service:
+  type: LoadBalancer  # Different service type for dev
+  port: 80
+  targetPort: 8080
+autoscaling:
+  enabled: false  # Disable autoscaling for dev
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
