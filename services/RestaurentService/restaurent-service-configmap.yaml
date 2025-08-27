@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restaurent-service-config
+  namespace: smartdelivery
+data:
+  appsettings.json: |
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning"
+        }
+      },
+      "AllowedHosts": "*",
+      "ConnectionStrings": {
+        "DefaultConnection": "Server=db;Database=RestaurantDB;User Id=sa;Password=your-strong-password;"
+      },
+      "ServiceName": "RestaurentService"
+    }

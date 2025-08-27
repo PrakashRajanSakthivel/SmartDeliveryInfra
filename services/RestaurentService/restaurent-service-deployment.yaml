@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurent-service
+  namespace: smartdelivery
+  labels:
+    app: restaurent-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: restaurent-service
+  template:
+    metadata:
+      labels:
+        app: restaurent-service
+    spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
+      containers:
+      - name: restaurent-service
+        image: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/appsettings.json
+          subPath: appsettings.json
+      volumes:
+      - name: config-volume
+        configMap:
+          name: restaurent-service-config

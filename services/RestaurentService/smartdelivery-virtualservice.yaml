@@ -1,0 +1,44 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: smartdelivery-vs
+  namespace: smartdelivery
+spec:
+  hosts:
+  - "api.smartdelivery.local"  # Single domain for all services
+  gateways:
+  - istio-system/istio-public-gateway
+  http:
+  # Route for RestaurentService
+  - match:
+    - uri:
+        prefix: /restaurentservice
+    rewrite:
+      uri: / # Rewrites /restaurentservice/api/foo to /api/foo
+    route:
+    - destination:
+        host: restaurent-service.smartdelivery.svc.cluster.local
+        port:
+          number: 80
+
+  # Route for OrderService (You will create this later)
+  - match:
+    - uri:
+        prefix: /orderservice
+    rewrite:
+      uri: /
+    route:
+    - destination:
+        host: order-service.smartdelivery.svc.cluster.local # Placeholder for your next service
+        port:
+          number: 80
+
+  # Optional: Default route if someone goes to just the domain
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: restaurent-service.smartdelivery.svc.cluster.local # or a dedicated frontend service
+        port:
+          number: 80
