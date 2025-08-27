@@ -46,10 +46,6 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           chmod 600 kubeconfig
 
-      - name: Validate kubeconfig
-        run: |
-          kubectl --kubeconfig=kubeconfig  get namespace smartdelivery
-
       - name: Open Hetzner Firewall port 6443
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
@@ -57,6 +53,12 @@ jobs:
         shell: pwsh
         run: |
           pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Kubernetes API for Restaurant Service deployment"
+
+
+      - name: Validate kubeconfig
+        run: |
+          kubectl --kubeconfig=kubeconfig  get namespace smartdelivery
+
 
       - name: Create namespace if not exists
         run: |
