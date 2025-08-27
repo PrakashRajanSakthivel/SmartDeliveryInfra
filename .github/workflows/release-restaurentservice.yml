@@ -44,17 +44,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Download build artifacts
+      - name: Download build artifacts (from workflow run)
+        if: github.event.workflow_run.id != null
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: ./
-          # Download from the triggering workflow run
           run-id: ${{ github.event.workflow_run.id }}
-        continue-on-error: true
 
-      - name: Download latest artifacts (fallback)
-        if: failure()
+      - name: Download latest artifacts (manual trigger)
+        if: github.event.workflow_run.id == null
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
@@ -72,11 +71,16 @@ jobs:
             echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
             echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
             echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+            echo "Using build artifacts from workflow run"
           else
             echo "No build artifacts found, using latest"
             echo "build_number=latest" >> $GITHUB_OUTPUT
             echo "image_tag=latest" >> $GITHUB_OUTPUT
             echo "image_name=ghcr.io/prakashrajansakthivel/restaurant" >> $GITHUB_OUTPUT
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "Using latest image tag"
           fi
       
       - name: Set up kubectl
