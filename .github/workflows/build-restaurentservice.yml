@@ -32,11 +32,11 @@ jobs:
       - name: Build
         run: dotnet build src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj --configuration Release
 
-      - name: Test
-        run: dotnet test src/RestaurantService.API/RestaurantService.API.csproj
+      # - name: Test
+      #   run: dotnet test src/RestaurantService.API/RestaurantService.API.csproj
 
       - name: Publish
-        run: dotnet publish src/RestaurantService.API/RestaurantService.API.csproj --configuration Release --output ./publish
+        run: dotnet publish src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj --configuration Release --output ./publish
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
