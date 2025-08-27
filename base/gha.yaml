@@ -7,23 +7,60 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: gha-namespace-reader
+  name: gha-deployer-role
 rules:
+# Namespace operations
 - apiGroups: [""]
   resources: ["namespaces"]
-  verbs: ["get", "list"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+# Pod operations
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Service operations
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# ConfigMap operations
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Secret operations
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Deployment operations
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# HPA operations
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# NetworkPolicy operations
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Istio VirtualService operations (if Istio is installed)
+- apiGroups: ["networking.istio.io"]
+  resources: ["virtualservices"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Events for monitoring
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch", "create", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: gha-namespace-reader-binding
+  name: gha-deployer-binding
 subjects:
 - kind: ServiceAccount
   name: gha-deployer
   namespace: kube-system
 roleRef:
   kind: ClusterRole
-  name: gha-namespace-reader
+  name: gha-deployer-role
   apiGroup: rbac.authorization.k8s.io
 
   ##kubectl create token gha-deployer -n kube-system --duration=8760h

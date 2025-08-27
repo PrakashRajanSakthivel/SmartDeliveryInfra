@@ -1,0 +1,153 @@
+name: Release Restaurant Service to K3s
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+  push:
+    branches:
+      - main
+    paths:
+      - 'release/RestaurentService/**'
+      - '.github/workflows/release-restaurentservice.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Write kubeconfig from secret
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          chmod 600 kubeconfig
+
+      - name: Validate kubeconfig
+        run: |
+          kubectl --kubeconfig=kubeconfig config view --minify
+          kubectl --kubeconfig=kubeconfig get nodes
+
+      - name: Open Hetzner Firewall port 6443
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Kubernetes API for Restaurant Service deployment"
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/smartdelivery-namespace.yaml
+
+      - name: Create image pull secret if not exists
+        run: |
+          kubectl --kubeconfig=kubeconfig create secret docker-registry ghcr-pull-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GHCR_PAT }} \
+            --namespace=smartdelivery \
+            --dry-run=client -o yaml | kubectl --kubeconfig=kubeconfig apply -f -
+
+      - name: Update deployment image tag
+        run: |
+          # Update the deployment to use the correct image name from build workflow
+          sed -i 's|ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest|ghcr.io/prakashrajansakthivel/restaurant:latest|g' release/RestaurentService/restaurent-service-deployment.yaml
+          
+          # Add image pull policy for latest tag
+          sed -i '/image:/a\        imagePullPolicy: Always' release/RestaurentService/restaurent-service-deployment.yaml
+
+      - name: Deploy ConfigMap
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/restaurent-service-configmap.yaml
+
+      - name: Deploy Service
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/restaurent-service-service.yaml
+
+      - name: Deploy Deployment
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/restaurent-service-deployment.yaml
+
+      - name: Deploy HPA
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/restaurent-service-hpa.yaml
+
+      - name: Deploy VirtualService (if Istio is available)
+        run: |
+          # Check if Istio is available before deploying VirtualService
+          if kubectl --kubeconfig=kubeconfig get crd virtualservices.networking.istio.io >/dev/null 2>&1; then
+            kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/smartdelivery-virtualservice.yaml
+            echo "VirtualService deployed successfully"
+          else
+            echo "Istio VirtualService CRD not found, skipping VirtualService deployment"
+          fi
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl --kubeconfig=kubeconfig rollout status deployment/restaurent-service -n smartdelivery --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl --kubeconfig=kubeconfig get pods -n smartdelivery -l app=restaurent-service
+          
+          echo "=== Service Status ==="
+          kubectl --kubeconfig=kubeconfig get svc -n smartdelivery -l app=restaurent-service
+          
+          echo "=== HPA Status ==="
+          kubectl --kubeconfig=kubeconfig get hpa -n smartdelivery
+
+      # - name: Test service connectivity
+      #   run: |
+      #     Wait a bit for the service to be fully ready
+      #     sleep 30
+          
+      #     Get the service IP
+      #     SERVICE_IP=$(kubectl --kubeconfig=kubeconfig get svc restaurent-service -n smartdelivery -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          
+      #     if [ -n "$SERVICE_IP" ]; then
+      #       echo "Testing connectivity to $SERVICE_IP:80"
+      #       curl -f --connect-timeout 10 http://$SERVICE_IP:80/health || echo "Health check failed, but deployment completed"
+      #     else
+      #       echo "Service IP not available yet, but deployment completed successfully"
+      #     fi
+
+      - name: Close Hetzner Firewall port 6443
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File "base/close-firewall-port.ps1" -Port 6443
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## 🚀 Restaurant Service Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ghcr.io/prakashrajansakthivel/restaurant:latest" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace:** smartdelivery" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployed Resources:" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigMap: restaurent-service-config" >> $GITHUB_STEP_SUMMARY
+          echo "- Service: restaurent-service" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment: restaurent-service (2 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- HPA: restaurent-service-hpa (1-5 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- VirtualService: smartdelivery-vs (if Istio available)" >> $GITHUB_STEP_SUMMARY

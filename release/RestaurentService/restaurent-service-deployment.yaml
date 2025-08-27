@@ -19,7 +19,8 @@ spec:
       - name: ghcr-pull-secret
       containers:
       - name: restaurent-service
-        image: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest
+        image: ghcr.io/prakashrajansakthivel/restaurant:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         resources:

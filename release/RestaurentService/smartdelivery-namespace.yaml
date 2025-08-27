@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: smartdelivery
+  labels:
+    name: smartdelivery
+    environment: production
+    app: smartdelivery
+  annotations:
+    description: "Namespace for SmartDelivery microservices"
