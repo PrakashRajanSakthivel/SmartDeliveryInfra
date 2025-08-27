@@ -27,8 +27,7 @@ jobs:
           FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
         shell: pwsh
         run: |
-          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
-          & ".\base\open-firewall-port.ps1" -Port 6443 -Description "Open Kubernetes API for CI/CD"
+          pwsh -ExecutionPolicy Bypass -File ".\base\open-firewall-port.ps1" -Port 6443 -Description "Open Kubernetes API for CI/CD"
 
       - name: Test connection to cluster
         run: |
@@ -41,5 +40,4 @@ jobs:
           FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
         shell: pwsh
         run: |
-          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
-          & ".\base\close-firewall-port.ps1" -Port 6443
+          pwsh -ExecutionPolicy Bypass -File ".\base\close-firewall-port.ps1" -Port 6443
