@@ -14,6 +14,15 @@ on:
   push:
     branches:
       - main
+      - dockerbuilds
+      - feature/restaurentservice
+    paths:
+      - 'release/RestaurentService/**'
+      - '.github/workflows/release-restaurentservice.yml'
+  pull_request:
+    branches:
+      - main
+      - dockerbuilds
     paths:
       - 'release/RestaurentService/**'
       - '.github/workflows/release-restaurentservice.yml'
