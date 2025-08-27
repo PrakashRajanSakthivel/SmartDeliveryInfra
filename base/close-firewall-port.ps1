@@ -61,7 +61,7 @@ try {
     
     # Wait for action to complete (with timeout)
     $actionId = $actionResponse.action.id
-    $maxWait = 30  # 30 second timeout
+    $maxWait = 15  # 15 second timeout
     $waitCount = 0
     
     Write-Host "Waiting for action to complete (timeout: $maxWait seconds)..."
