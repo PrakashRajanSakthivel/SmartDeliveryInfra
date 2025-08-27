@@ -49,45 +49,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Download build artifacts (from workflow run)
-        if: github.event.workflow_run.id != null
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: ./
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Download specific build artifacts
-        if: github.event.workflow_run.id == null && github.event.inputs.build_run_id != ''
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: ./
-          run-id: ${{ github.event.inputs.build_run_id }}
-        continue-on-error: true
-
-      - name: Download latest artifacts (fallback)
-        if: github.event.workflow_run.id == null && (github.event.inputs.build_run_id == '' || failure())
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: ./
-        continue-on-error: true
-
-      - name: Read build info
+      - name: Set build info
         id: build-info
         run: |
-          if [ -f build-info.txt ]; then
-            source build-info.txt
-            echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
-            echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-            echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-            echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
-            echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
-            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-            echo "✅ Using build artifacts from workflow run"
+          if [ "${{ github.event.workflow_run.id }}" != "" ]; then
+            # Automatic trigger after build - use build number
+            echo "build_number=${{ github.event.workflow_run.run_number }}" >> $GITHUB_OUTPUT
+            echo "image_tag=v${{ github.event.workflow_run.run_number }}" >> $GITHUB_OUTPUT
+            echo "image_name=ghcr.io/prakashrajansakthivel/restaurant" >> $GITHUB_OUTPUT
+            echo "build_date=${{ github.event.workflow_run.created_at }}" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
+            echo "✅ Using build from workflow run #${{ github.event.workflow_run.run_number }}"
+          elif [ "${{ github.event.inputs.build_run_id }}" != "" ]; then
+            # Manual trigger with specific build ID
+            echo "build_number=${{ github.event.inputs.build_run_id }}" >> $GITHUB_OUTPUT
+            echo "image_tag=v${{ github.event.inputs.build_run_id }}" >> $GITHUB_OUTPUT
+            echo "image_name=ghcr.io/prakashrajansakthivel/restaurant" >> $GITHUB_OUTPUT
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "✅ Using specific build #${{ github.event.inputs.build_run_id }}"
           else
-            echo "⚠️ No build artifacts found, using latest"
+            # Manual trigger without build ID - use latest
             echo "build_number=latest" >> $GITHUB_OUTPUT
             echo "image_tag=latest" >> $GITHUB_OUTPUT
             echo "image_name=ghcr.io/prakashrajansakthivel/restaurant" >> $GITHUB_OUTPUT
