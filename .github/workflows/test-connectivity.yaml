@@ -28,8 +28,18 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Current directory: $(Get-Location)"
+          Write-Host "GitHub workspace: $env:GITHUB_WORKSPACE"
+          Write-Host "Repository contents:"
+          Get-ChildItem -Recurse -Name | Where-Object { $_ -like "*firewall*" -or $_ -like "*.ps1" }
+          Write-Host "Checking base directory:"
+          if (Test-Path "base") { Get-ChildItem "base" } else { Write-Host "base directory not found" }
           Write-Host "Checking if script exists: $(Test-Path 'base/open-firewall-port.ps1')"
-          pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Open Kubernetes API for CI/CD"
+          if (Test-Path 'base/open-firewall-port.ps1') {
+            pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Open Kubernetes API for CI/CD"
+          } else {
+            Write-Error "Script file not found at base/open-firewall-port.ps1"
+            exit 1
+          }
 
       - name: Test connection to cluster
         run: |
@@ -43,5 +53,11 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Current directory: $(Get-Location)"
+          Write-Host "GitHub workspace: $env:GITHUB_WORKSPACE"
           Write-Host "Checking if script exists: $(Test-Path 'base/close-firewall-port.ps1')"
-          pwsh -ExecutionPolicy Bypass -File "base/close-firewall-port.ps1" -Port 6443
+          if (Test-Path 'base/close-firewall-port.ps1') {
+            pwsh -ExecutionPolicy Bypass -File "base/close-firewall-port.ps1" -Port 6443
+          } else {
+            Write-Error "Script file not found at base/close-firewall-port.ps1"
+            exit 1
+          }
