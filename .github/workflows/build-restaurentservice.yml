@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Clean workspace
+        run: |
+          git clean -fdx
       # Checkout the code repo (SmartDelivery)
       - name: Checkout Code Repo
         uses: actions/checkout@v4
