@@ -1,0 +1,58 @@
+name: Test Kubernetes Connection
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - dockerbuilds
+      - '**'  # matches all branches
+
+jobs:
+  test-connect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Write kubeconfig from secret
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+
+      - name: Debug kubeconfig file
+        run: |
+          echo "=== KUBECONFIG FILE CONTENT ==="
+          cat kubeconfig
+          echo "=== END KUBECONFIG ==="
+          echo "=== FILE SIZE ==="
+          ls -la kubeconfig
+          echo "=== KUBECONFIG VALIDATION ==="
+          kubectl --kubeconfig=kubeconfig config view
+
+      - name: Open Hetzner Firewall port 6443 to all IPs
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Open Kubernetes API for CI/CD"
+
+      - name: Test connection to cluster
+        run: |
+          echo "=== TESTING KUBECTL CONNECTION ==="
+          kubectl --kubeconfig=kubeconfig get ns --v=6
+          echo "=== CONNECTION TEST COMPLETE ==="
+
+      - name: Close Hetzner Firewall port 6443 to all IPs
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File "base/close-firewall-port.ps1" -Port 6443

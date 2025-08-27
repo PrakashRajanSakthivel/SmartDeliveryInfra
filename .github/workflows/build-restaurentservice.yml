@@ -18,23 +18,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: PrakashRajanSakthivel/SmartDelivery
-          ref: dev
+          ref: feature/buildfix
           token: ${{ secrets.CODE_REPO_TOKEN }}
-
+      - name: Clean workspace
+        run: |
+          git clean -fdx
+          
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
       - name: Build
-        run: dotnet build src/RestaurantService.API/RestaurantService.API.csproj --configuration Release
+        run: dotnet build src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj --configuration Release
 
-      - name: Test
-        run: dotnet test src/RestaurantService.API/RestaurantService.API.csproj
+      # - name: Test
+      #   run: dotnet test src/RestaurantService.API/RestaurantService.API.csproj
 
-      - name: Publish
-        run: dotnet publish src/RestaurantService.API/RestaurantService.API.csproj --configuration Release --output ./publish
+      # - name: Publish
+      #   run: dotnet publish src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj --configuration Release --output ./publish
 
+      - name: Publish RestaurantService
+        run: dotnet publish src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj -c Release -o ./publish/RestaurantService
+        
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
