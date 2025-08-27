@@ -29,15 +29,26 @@ jobs:
         run: |
           Write-Host "Current directory: $(Get-Location)"
           Write-Host "GitHub workspace: $env:GITHUB_WORKSPACE"
-          Write-Host "Repository contents:"
-          Get-ChildItem -Recurse -Name | Where-Object { $_ -like "*firewall*" -or $_ -like "*.ps1" }
-          Write-Host "Checking base directory:"
-          if (Test-Path "base") { Get-ChildItem "base" } else { Write-Host "base directory not found" }
-          Write-Host "Checking if script exists: $(Test-Path 'base/open-firewall-port.ps1')"
-          if (Test-Path 'base/open-firewall-port.ps1') {
-            pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Open Kubernetes API for CI/CD"
+          Write-Host "=== FULL DIRECTORY LISTING ==="
+          Get-ChildItem -Recurse | Format-Table Name, FullName, PSIsContainer
+          Write-Host "=== SEARCHING FOR POWERSHELL SCRIPTS ==="
+          Get-ChildItem -Recurse -Filter "*.ps1" | Format-Table Name, FullName
+          Write-Host "=== SEARCHING FOR FIREWALL SCRIPTS ==="
+          Get-ChildItem -Recurse -Filter "*firewall*" | Format-Table Name, FullName
+          Write-Host "=== CHECKING SPECIFIC PATHS ==="
+          Write-Host "base directory exists: $(Test-Path 'base')"
+          Write-Host "base/open-firewall-port.ps1 exists: $(Test-Path 'base/open-firewall-port.ps1')"
+          Write-Host "base/close-firewall-port.ps1 exists: $(Test-Path 'base/close-firewall-port.ps1')"
+          Write-Host "=== TRYING TO FIND SCRIPTS ANYWHERE ==="
+          $scripts = Get-ChildItem -Recurse -Filter "*firewall*.ps1"
+          if ($scripts) {
+            Write-Host "Found firewall scripts:"
+            $scripts | ForEach-Object { Write-Host "  $($_.FullName)" }
+            $scriptPath = $scripts[0].FullName
+            Write-Host "Using script: $scriptPath"
+            pwsh -ExecutionPolicy Bypass -File $scriptPath -Port 6443 -Description "Open Kubernetes API for CI/CD"
           } else {
-            Write-Error "Script file not found at base/open-firewall-port.ps1"
+            Write-Error "No firewall scripts found in repository"
             exit 1
           }
 
@@ -54,10 +65,15 @@ jobs:
         run: |
           Write-Host "Current directory: $(Get-Location)"
           Write-Host "GitHub workspace: $env:GITHUB_WORKSPACE"
-          Write-Host "Checking if script exists: $(Test-Path 'base/close-firewall-port.ps1')"
-          if (Test-Path 'base/close-firewall-port.ps1') {
-            pwsh -ExecutionPolicy Bypass -File "base/close-firewall-port.ps1" -Port 6443
+          Write-Host "=== FINDING CLOSE FIREWALL SCRIPT ==="
+          $scripts = Get-ChildItem -Recurse -Filter "*close-firewall*.ps1"
+          if ($scripts) {
+            Write-Host "Found close firewall scripts:"
+            $scripts | ForEach-Object { Write-Host "  $($_.FullName)" }
+            $scriptPath = $scripts[0].FullName
+            Write-Host "Using script: $scriptPath"
+            pwsh -ExecutionPolicy Bypass -File $scriptPath -Port 6443
           } else {
-            Write-Error "Script file not found at base/close-firewall-port.ps1"
+            Write-Error "No close firewall scripts found in repository"
             exit 1
           }
