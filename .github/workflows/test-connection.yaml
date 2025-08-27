@@ -1,0 +1,21 @@
+name: Test Kubernetes Connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-connect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Write kubeconfig from secret
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+
+      - name: Test connection to cluster
+        run: |
+          kubectl --kubeconfig=kubeconfig get ns
