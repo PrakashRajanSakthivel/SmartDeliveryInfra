@@ -46,10 +46,9 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           chmod 600 kubeconfig
 
-      # - name: Validate kubeconfig
-      #   run: |
-      #     kubectl --kubeconfig=kubeconfig config view --minify
-      #     kubectl --kubeconfig=kubeconfig get nodes
+      - name: Validate kubeconfig
+        run: |
+          kubectl --kubeconfig=kubeconfig  get namespace smartdelivery
 
       - name: Open Hetzner Firewall port 6443
         env:
