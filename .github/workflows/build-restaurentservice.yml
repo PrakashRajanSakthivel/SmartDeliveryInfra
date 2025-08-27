@@ -62,6 +62,27 @@ jobs:
         with:
           context: src/Dockerfiles
           file: src/Dockerfiles/RestaurantDockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/prakashrajansakthivel/restaurant:latest
+            ghcr.io/prakashrajansakthivel/restaurant:v${{ github.run_number }}
+
+      - name: Create build info
+        run: |
+          echo "BUILD_NUMBER=${{ github.run_number }}" > build-info.txt
+          echo "IMAGE_TAG=v${{ github.run_number }}" >> build-info.txt
+          echo "IMAGE_NAME=ghcr.io/prakashrajansakthivel/restaurant" >> build-info.txt
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> build-info.txt
+          echo "COMMIT_SHA=${{ github.sha }}" >> build-info.txt
+          echo "BRANCH=${{ github.ref_name }}" >> build-info.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            build-info.txt
+            src/Dockerfiles/publish/
+          retention-days: 30
+

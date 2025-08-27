@@ -36,6 +36,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./
+
+      - name: Read build info
+        id: build-info
+        run: |
+          if [ -f build-info.txt ]; then
+            source build-info.txt
+            echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+            echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+            echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+            echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+            echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "No build artifacts found, using latest"
+            echo "build_number=latest" >> $GITHUB_OUTPUT
+            echo "image_tag=latest" >> $GITHUB_OUTPUT
+            echo "image_name=ghcr.io/prakashrajansakthivel/restaurant" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
@@ -75,10 +99,10 @@ jobs:
 
       - name: Update deployment image tag
         run: |
-          # Update the deployment to use the correct image name from build workflow
-          sed -i 's|ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest|ghcr.io/prakashrajansakthivel/restaurant:latest|g' release/RestaurentService/restaurent-service-deployment.yaml
+          # Update the deployment to use the build info from artifacts
+          sed -i 's|ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest|${{ steps.build-info.outputs.image_name }}:${{ steps.build-info.outputs.image_tag }}|g' release/RestaurentService/restaurent-service-deployment.yaml
           
-          # Add image pull policy for latest tag
+          # Add image pull policy for versioned tag
           sed -i '/image:/a\        imagePullPolicy: Always' release/RestaurentService/restaurent-service-deployment.yaml
 
       - name: Deploy ConfigMap
@@ -152,7 +176,10 @@ jobs:
           echo "## 🚀 Restaurant Service Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** ghcr.io/prakashrajansakthivel/restaurant:latest" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ steps.build-info.outputs.image_name }}:${{ steps.build-info.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Number:** ${{ steps.build-info.outputs.build_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Date:** ${{ steps.build-info.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ steps.build-info.outputs.commit_sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Namespace:** smartdelivery" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployed Resources:" >> $GITHUB_STEP_SUMMARY
