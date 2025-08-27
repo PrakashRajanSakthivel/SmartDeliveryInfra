@@ -27,7 +27,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Build
-        run: dotnet build src/RestaurantService.API/RestaurantService.API.csproj --configuration Release
+        run: dotnet build src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj --configuration Release
 
       - name: Test
         run: dotnet test src/RestaurantService.API/RestaurantService.API.csproj
