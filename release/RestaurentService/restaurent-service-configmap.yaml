@@ -14,7 +14,35 @@ data:
       },
       "AllowedHosts": "*",
       "ConnectionStrings": {
-        "DefaultConnection": "Server=db;Database=RestaurantDB;User Id=sa;Password=your-strong-password;"
+        "RestaurantDatabase": "Data Source=.;Initial Catalog=RestaurentServiceDb;Integrated Security=True;TrustServerCertificate=True;"
       },
-      "ServiceName": "RestaurentService"
+      "Jwt": {
+        "Issuer": "SmartOrderSystem",
+        "Audience": "SmartOrderSystemUsers",
+        "SecretKey": "VerySecretKeyForSigningTokens123!"
+      },
+      "Serilog": {
+        "Using": [ "Serilog.Sinks.Console", "Serilog.Sinks.Elasticsearch" ],
+        "MinimumLevel": {
+          "Default": "Information",
+          "Override": {
+            "Microsoft": "Warning",
+            "System": "Warning"
+          }
+        },
+        "WriteTo": [
+          {
+            "Name": "Console"
+          },
+          {
+            "Name": "Elasticsearch",
+            "Args": {
+              "nodeUris": "http://localhost:9200",
+              "indexFormat": "orderservice-logs-{0:yyyy.MM}",
+              "autoRegisterTemplate": true
+            }
+          }
+        ],
+        "Enrich": [ "FromLogContext" ]
+      }
     }
