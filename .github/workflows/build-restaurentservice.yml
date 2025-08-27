@@ -13,9 +13,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clean workspace
-        run: |
-          git clean -fdx
       # Checkout the code repo (SmartDelivery)
       - name: Checkout Code Repo
         uses: actions/checkout@v4
@@ -23,7 +20,10 @@ jobs:
           repository: PrakashRajanSakthivel/SmartDelivery
           ref: dev
           token: ${{ secrets.CODE_REPO_TOKEN }}
-
+      - name: Clean workspace
+        run: |
+          git clean -fdx
+          
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
