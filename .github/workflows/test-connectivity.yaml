@@ -21,6 +21,62 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
 
+      - name: Open Hetzner Firewall port 6443 to all IPs
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          function Open-6443 {
+              $headers = @{ Authorization = "Bearer $env:HCLOUD_TOKEN" }
+              $fwId = $env:FIREWALL_ID
+
+              # Fetch existing rules
+              $fw = Invoke-RestMethod -Method Get -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers
+
+              # Add rule: allow TCP 6443 from 0.0.0.0/0
+              $newRule = @{
+                  direction = "in"
+                  protocol = "tcp"
+                  port = "6443"
+                  source_ips = @("0.0.0.0/0")
+                  description = "Open Kubernetes API for CI/CD"
+              }
+              $rules = $fw.firewall.rules + $newRule
+
+              # Update firewall
+              $body = @{ rules = $rules } | ConvertTo-Json
+              Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers -Body $body
+              Write-Host "Port 6443 opened to all IPs."
+          }
+          Open-6443
+
       - name: Test connection to cluster
         run: |
           kubectl --kubeconfig=kubeconfig get ns
+
+      - name: Close Hetzner Firewall port 6443 to all IPs
+        if: always() # Ensure this runs even if previous steps fail
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          function Close-6443 {
+              $headers = @{ Authorization = "Bearer $env:HCLOUD_TOKEN" }
+              $fwId = $env:FIREWALL_ID
+
+              # Fetch current rules
+              $fw = Invoke-RestMethod -Method Get -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers
+
+              # Remove any rule opening 6443 to 0.0.0.0/0
+              $rules = $fw.firewall.rules | Where-Object {
+                  !(($_.protocol -eq "tcp") -and ($_.port -eq "6443") -and ($_.source_ips -contains "0.0.0.0/0"))
+              }
+
+              # Update firewall
+              $body = @{ rules = $rules } | ConvertTo-Json
+              Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers -Body $body
+              Write-Host "Port 6443 to all IPs removed."
+          }
+          Close-6443
