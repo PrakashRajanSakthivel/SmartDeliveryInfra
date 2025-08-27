@@ -1,0 +1,33 @@
+# Minimal configuration for ARM
+global:
+  proxy:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Disable unnecessary components
+meshConfig:
+  defaultConfig:
+    concurrency: 1
+
+# ARM-optimized settings
+pilot:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Disable telemetry to save resources
+telemetry:
+  enabled: false
+
+# Minimalist configuration for development
+sidecarInjectorWebhook:
+  enabled: true

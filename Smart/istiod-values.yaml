@@ -1,0 +1,24 @@
+# ARM-optimized resource limits
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Minimal configuration
+meshConfig:
+  accessLogFile: /dev/stdout
+  defaultConfig:
+    concurrency: 1
+
+# Disable unnecessary features
+global:
+  proxy:
+    autoInject: enabled
+  logAsJson: false
+
+# ARM-compatible image settings
+hub: docker.io/istio
+tag: 1.22.0

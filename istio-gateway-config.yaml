@@ -1,0 +1,33 @@
+# istio-gateway-config.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: istio-public-gateway    # Clear name: This is the Gateway resource for public traffic
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "example.local" # The hostname from your Windows hosts file
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: example-local-vs        # Clear name: The VirtualService for example.local
+  namespace: default
+spec:
+  hosts:
+  - "example.local"   # Matches the host in the Gateway
+  gateways:
+  - istio-system/istio-public-gateway # Points to the Gateway above
+  http:
+  - route:
+    - destination:
+        host: webapp-service.default.svc.cluster.local # <- Routes to OUR application service
+        port:
+          number: 80
