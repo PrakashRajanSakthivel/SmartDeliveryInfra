@@ -11,6 +11,11 @@ on:
         options:
         - production
         - staging
+      build_run_id:
+        description: 'Build run ID to deploy (optional - leave empty for latest)'
+        required: false
+        type: string
+        default: ''
   workflow_run:
     workflows: ["Build and Push Restaurant Service"]
     types:
@@ -52,8 +57,17 @@ jobs:
           path: ./
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Download latest artifacts (manual trigger)
-        if: github.event.workflow_run.id == null
+      - name: Download specific build artifacts
+        if: github.event.workflow_run.id == null && github.event.inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./
+          run-id: ${{ github.event.inputs.build_run_id }}
+        continue-on-error: true
+
+      - name: Download latest artifacts (fallback)
+        if: github.event.workflow_run.id == null && (github.event.inputs.build_run_id == '' || failure())
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
@@ -71,16 +85,16 @@ jobs:
             echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
             echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
             echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-            echo "Using build artifacts from workflow run"
+            echo "✅ Using build artifacts from workflow run"
           else
-            echo "No build artifacts found, using latest"
+            echo "⚠️ No build artifacts found, using latest"
             echo "build_number=latest" >> $GITHUB_OUTPUT
             echo "image_tag=latest" >> $GITHUB_OUTPUT
             echo "image_name=ghcr.io/prakashrajansakthivel/restaurant" >> $GITHUB_OUTPUT
             echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
             echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "Using latest image tag"
+            echo "✅ Using latest image tag"
           fi
       
       - name: Set up kubectl
