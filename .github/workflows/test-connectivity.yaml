@@ -30,11 +30,11 @@ jobs:
           $headers = @{ Authorization = "Bearer $env:HCLOUD_TOKEN" }
           $fwId = $env:FIREWALL_ID
 
-          # Fetch existing rules
+          # Fetch the current firewall config
           $fw = Invoke-RestMethod -Method Get -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers
           $existingRules = $fw.firewall.rules
 
-          # Compose new rule
+          # Compose new rule for port 6443
           $newRule = @{
               direction = "in"
               protocol = "tcp"
@@ -45,13 +45,20 @@ jobs:
 
           # Ensure rule isn't duplicated
           $updatedRules = $existingRules | Where-Object {
-              !(($_.protocol -eq "tcp") -and ($_.port -eq "6443") -and ($_.source_ips -contains "0.0.0.0/0"))
+              !(($_.direction -eq "in") -and ($_.protocol -eq "tcp") -and ($_.port -eq "6443") -and ($_.source_ips -contains "0.0.0.0/0"))
           }
           $updatedRules += $newRule
 
-          # Update firewall
-          $body = @{ rules = $updatedRules } | ConvertTo-Json -Depth 5
-          Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers -Body $body
+          # Prepare update body, include applied_to if present
+          $updateBody = @{
+            rules = $updatedRules
+          }
+          if ($fw.firewall.PSObject.Properties.Name -contains "applied_to") {
+            $updateBody.applied_to = $fw.firewall.applied_to
+          }
+
+          $jsonBody = $updateBody | ConvertTo-Json -Depth 6
+          Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers -Body $jsonBody
           Write-Host "Port 6443 opened to all IPs."
 
       - name: Test connection to cluster
@@ -68,16 +75,23 @@ jobs:
           $headers = @{ Authorization = "Bearer $env:HCLOUD_TOKEN" }
           $fwId = $env:FIREWALL_ID
 
-          # Fetch current rules
+          # Fetch the current firewall config
           $fw = Invoke-RestMethod -Method Get -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers
           $existingRules = $fw.firewall.rules
 
           # Remove any rule opening 6443 to 0.0.0.0/0
           $updatedRules = $existingRules | Where-Object {
-              !(($_.protocol -eq "tcp") -and ($_.port -eq "6443") -and ($_.source_ips -contains "0.0.0.0/0"))
+              !(($_.direction -eq "in") -and ($_.protocol -eq "tcp") -and ($_.port -eq "6443") -and ($_.source_ips -contains "0.0.0.0/0"))
           }
 
-          # Update firewall
-          $body = @{ rules = $updatedRules } | ConvertTo-Json -Depth 5
-          Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers -Body $body
+          # Prepare update body, include applied_to if present
+          $updateBody = @{
+            rules = $updatedRules
+          }
+          if ($fw.firewall.PSObject.Properties.Name -contains "applied_to") {
+            $updateBody.applied_to = $fw.firewall.applied_to
+          }
+
+          $jsonBody = $updateBody | ConvertTo-Json -Depth 6
+          Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$fwId" -Headers $headers -Body $jsonBody
           Write-Host "Port 6443 to all IPs removed."
