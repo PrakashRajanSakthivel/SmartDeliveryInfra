@@ -11,6 +11,14 @@ on:
         options:
         - production
         - staging
+  workflow_run:
+    workflows: ["Build and Push Restaurant Service"]
+    types:
+      - completed
+    branches:
+      - main
+      - dockerbuilds
+      - feature/restaurentservice
   push:
     branches:
       - main
@@ -41,6 +49,17 @@ jobs:
         with:
           name: build-artifacts
           path: ./
+          # Download from the triggering workflow run
+          run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true
+
+      - name: Download latest artifacts (fallback)
+        if: failure()
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./
+        continue-on-error: true
 
       - name: Read build info
         id: build-info
