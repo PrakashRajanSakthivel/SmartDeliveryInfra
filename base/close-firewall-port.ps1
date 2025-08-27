@@ -54,7 +54,36 @@ try {
     $jsonBody = $updateBody | ConvertTo-Json -Depth 6
     
     Write-Host "Closing port $Port to $SourceIPs..."
-    Invoke-RestMethod -Method Put -Uri "https://api.hetzner.cloud/v1/firewalls/$firewallId" -Headers $headers -Body $jsonBody
+    
+    # Use Set Rules action instead of direct PUT
+    $actionResponse = Invoke-RestMethod -Method Post -Uri "https://api.hetzner.cloud/v1/firewalls/$firewallId/actions/set_rules" -Headers $headers -Body $jsonBody
+    Write-Host "✅ Set Rules action initiated! Action ID: $($actionResponse.action.id)"
+    
+    # Wait for action to complete
+    $actionId = $actionResponse.action.id
+    $maxWait = 30
+    $waitCount = 0
+    
+    do {
+        Start-Sleep -Seconds 2
+        $waitCount += 2
+        
+        $actionStatus = Invoke-RestMethod -Method Get -Uri "https://api.hetzner.cloud/v1/firewalls/$firewallId/actions/$actionId" -Headers $headers
+        
+        if ($actionStatus.action.status -eq "success") {
+            Write-Host "✅ Action completed successfully!"
+            break
+        } elseif ($actionStatus.action.status -eq "error") {
+            Write-Error "❌ Action failed: $($actionStatus.action.error.message)"
+            exit 1
+        }
+        
+    } while ($waitCount -lt $maxWait)
+    
+    if ($waitCount -ge $maxWait) {
+        Write-Error "⚠️  Action timed out after $maxWait seconds"
+        exit 1
+    }
     
     Write-Host "Successfully closed port $Port to $SourceIPs"
     
