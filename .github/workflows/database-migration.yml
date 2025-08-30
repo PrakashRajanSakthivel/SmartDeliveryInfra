@@ -1,0 +1,214 @@
+name: Database Migration Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+        - development
+      service:
+        description: 'Service to migrate (leave empty for all)'
+        required: false
+        type: choice
+        options:
+        - all
+        - restaurant
+        - order
+        - cart
+        - payment
+        default: 'all'
+      dry_run:
+        description: 'Dry run - show what would be applied'
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+      - dockerbuilds
+    paths:
+      - 'src/services/*/Migrations/**'
+      - 'src/services/*/Data/**'
+      - '.github/workflows/database-migration.yml'
+  pull_request:
+    branches:
+      - main
+      - dockerbuilds
+    paths:
+      - 'src/services/*/Migrations/**'
+      - 'src/services/*/Data/**'
+      - '.github/workflows/database-migration.yml'
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Validate Restaurant Service Migrations
+        run: |
+          cd src/services/RestaurantService/RestaurantService.Infra
+          dotnet ef migrations list --no-build
+      
+      - name: Validate Order Service Migrations
+        run: |
+          cd src/services/OrderService/OrderService.Infra
+          dotnet ef migrations list --no-build
+      
+      - name: Validate Cart Service Migrations
+        run: |
+          cd src/services/CartService/CartService.Infra
+          dotnet ef migrations list --no-build
+
+  migrate-database:
+    runs-on: ubuntu-latest
+    needs: validate-migrations
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Set migration info
+        id: migration-info
+        run: |
+          echo "environment=${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_OUTPUT
+          echo "service=${{ github.event.inputs.service || 'all' }}" >> $GITHUB_OUTPUT
+          echo "dry_run=${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_OUTPUT
+          echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+      
+      - name: Create migration script
+        id: create-script
+        run: |
+          cat > migrate-databases.ps1 << 'EOF'
+          param(
+              [string]$Environment,
+              [string]$Service = "all",
+              [bool]$DryRun = $false
+          )
+          
+          Write-Host "Starting database migration for environment: $Environment, service: $Service, dry run: $DryRun"
+          
+          $services = @()
+          if ($Service -eq "all") {
+              $services = @("restaurant", "order", "cart")
+          } else {
+              $services = @($Service)
+          }
+          
+          foreach ($svc in $services) {
+              Write-Host "Processing $svc service..."
+              
+              $projectPath = ""
+              $connectionStringKey = ""
+              
+              switch ($svc) {
+                  "restaurant" {
+                      $projectPath = "src/services/RestaurantService/RestaurantService.Infra"
+                      $connectionStringKey = "RestaurantDatabase"
+                  }
+                  "order" {
+                      $projectPath = "src/services/OrderService/OrderService.Infra"
+                      $connectionStringKey = "OrderDatabase"
+                  }
+                  "cart" {
+                      $projectPath = "src/services/CartService/CartService.Infra"
+                      $connectionStringKey = "CartDatabase"
+                  }
+              }
+              
+              if ($projectPath -and $connectionStringKey) {
+                  Write-Host "Migrating $svc service database..."
+                  
+                  if ($DryRun) {
+                      Write-Host "DRY RUN: Would apply migrations for $svc"
+                      dotnet ef migrations list --project $projectPath
+                  } else {
+                      dotnet ef database update --project $projectPath --verbose
+                      Write-Host "Successfully migrated $svc database"
+                  }
+              }
+          }
+          EOF
+      
+      - name: Run Restaurant Service Migration
+        if: github.event.inputs.service == 'all' || github.event.inputs.service == 'restaurant'
+        run: |
+          cd src/services/RestaurantService/RestaurantService.Infra
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "DRY RUN: Would apply Restaurant Service migrations"
+            dotnet ef migrations list --no-build
+          else
+            echo "Applying Restaurant Service migrations..."
+            dotnet ef database update --verbose
+          fi
+        env:
+          ConnectionStrings__RestaurantDatabase: ${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}
+      
+      - name: Run Order Service Migration
+        if: github.event.inputs.service == 'all' || github.event.inputs.service == 'order'
+        run: |
+          cd src/services/OrderService/OrderService.Infra
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "DRY RUN: Would apply Order Service migrations"
+            dotnet ef migrations list --no-build
+          else
+            echo "Applying Order Service migrations..."
+            dotnet ef database update --verbose
+          fi
+        env:
+          ConnectionStrings__OrderDatabase: ${{ secrets.ORDER_DB_CONNECTION_STRING }}
+      
+      - name: Run Cart Service Migration
+        if: github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
+        run: |
+          cd src/services/CartService/CartService.Infra
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "DRY RUN: Would apply Cart Service migrations"
+            dotnet ef migrations list --no-build
+          else
+            echo "Applying Cart Service migrations..."
+            dotnet ef database update --verbose
+          fi
+        env:
+          ConnectionStrings__CartDatabase: ${{ secrets.CART_DB_CONNECTION_STRING }}
+      
+      - name: Migration Summary
+        if: always()
+        run: |
+          echo "## 🗄️ Database Migration Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ steps.migration-info.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ steps.migration-info.outputs.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Dry Run:** ${{ steps.migration-info.outputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ steps.migration-info.outputs.commit_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ steps.migration-info.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Migrated Services:" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.service }}" = "all" ] || [ "${{ github.event.inputs.service }}" = "restaurant" ]; then
+            echo "- ✅ Restaurant Service" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ github.event.inputs.service }}" = "all" ] || [ "${{ github.event.inputs.service }}" = "order" ]; then
+            echo "- ✅ Order Service" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ github.event.inputs.service }}" = "all" ] || [ "${{ github.event.inputs.service }}" = "cart" ]; then
+            echo "- ✅ Cart Service" >> $GITHUB_STEP_SUMMARY
+          fi
