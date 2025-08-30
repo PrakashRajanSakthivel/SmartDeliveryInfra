@@ -26,7 +26,7 @@ on:
         - order
         - cart
         - payment
-        default: 'all'
+        default: 'restaurant'
       dry_run:
         description: 'Dry run - show what would be applied'
         required: false
@@ -69,6 +69,11 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      
+      - name: Install EF Core Tools
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet tool restore
       
       - name: Validate Migrations
         run: |
@@ -121,6 +126,11 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      
+      - name: Install EF Core Tools
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet tool restore
       
       - name: Set migration info
         id: migration-info
