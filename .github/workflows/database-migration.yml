@@ -50,8 +50,16 @@ jobs:
   validate-migrations:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout Application Repository
         uses: actions/checkout@v4
+        with:
+          repository: PrakashRajanSakthivel/SmartDelivery
+          ref: feature/healthcheck
+          token: ${{ secrets.CODE_REPO_TOKEN }}
+      
+      - name: Clean workspace
+        run: |
+          git clean -fdx
       
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -146,8 +154,16 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'production' }}
     
     steps:
-      - name: Checkout repository
+      - name: Checkout Application Repository
         uses: actions/checkout@v4
+        with:
+          repository: PrakashRajanSakthivel/SmartDelivery
+          ref: feature/healthcheck
+          token: ${{ secrets.CODE_REPO_TOKEN }}
+      
+      - name: Clean workspace
+        run: |
+          git clean -fdx
       
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
