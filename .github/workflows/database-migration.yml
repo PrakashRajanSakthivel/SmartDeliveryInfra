@@ -1,5 +1,9 @@
 name: Database Migration Pipeline
 
+# Flag to control migration behavior
+env:
+  RUN_MIGRATIONS_IN_PR: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -127,10 +131,8 @@ jobs:
           echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
       
-
-      
       - name: Run Restaurant Service Migration
-        if: github.event.inputs.service == 'all' || github.event.inputs.service == 'restaurant'
+        if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'restaurant'
         run: |
           cd src/services/RestaurantService/RestaurantService.Infra
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
@@ -144,7 +146,7 @@ jobs:
           ConnectionStrings__RestaurantDatabase: ${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}
       
       - name: Run Order Service Migration
-        if: github.event.inputs.service == 'all' || github.event.inputs.service == 'order'
+        if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'order'
         run: |
           cd src/services/OrderService/OrderService.Infra
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
@@ -158,7 +160,7 @@ jobs:
           ConnectionStrings__OrderDatabase: ${{ secrets.ORDER_DB_CONNECTION_STRING }}
       
       - name: Run Cart Service Migration
-        if: github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
+        if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
         run: |
           cd src/services/CartService/CartService.Infra
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
