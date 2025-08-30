@@ -58,19 +58,50 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       
+      - name: Verify Repository Structure
+        run: |
+          echo "=== Repository Structure Verification ==="
+          echo "Current directory: $(pwd)"
+          echo "Repository root contents:"
+          ls -la
+          echo ""
+          echo "Services directory contents:"
+          ls -la src/services/
+          echo ""
+          echo "RestaurantService directory contents:"
+          ls -la src/services/RestaurantService/
+          echo ""
+          echo "OrderService directory contents:"
+          ls -la src/services/OrderService/
+          echo ""
+          echo "CartService directory contents:"
+          ls -la src/services/CartService/
+      
       - name: Validate Restaurant Service Migrations
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking if path exists: src/services/RestaurantService/RestaurantService.Infra"
+          ls -la src/services/RestaurantService/
           cd src/services/RestaurantService/RestaurantService.Infra
+          echo "Successfully changed to RestaurantService.Infra directory"
           dotnet ef migrations list --no-build
       
       - name: Validate Order Service Migrations
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking if path exists: src/services/OrderService/OrderService.Infra"
+          ls -la src/services/OrderService/
           cd src/services/OrderService/OrderService.Infra
+          echo "Successfully changed to OrderService.Infra directory"
           dotnet ef migrations list --no-build
       
       - name: Validate Cart Service Migrations
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking if path exists: src/services/CartService/CartService.Infra"
+          ls -la src/services/CartService/
           cd src/services/CartService/CartService.Infra
+          echo "Successfully changed to CartService.Infra directory"
           dotnet ef migrations list --no-build
 
   migrate-database:
@@ -153,7 +184,11 @@ jobs:
       - name: Run Restaurant Service Migration
         if: github.event.inputs.service == 'all' || github.event.inputs.service == 'restaurant'
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking RestaurantService.Infra path..."
+          ls -la src/services/RestaurantService/
           cd src/services/RestaurantService/RestaurantService.Infra
+          echo "Successfully changed to RestaurantService.Infra directory"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Would apply Restaurant Service migrations"
             dotnet ef migrations list --no-build
@@ -167,7 +202,11 @@ jobs:
       - name: Run Order Service Migration
         if: github.event.inputs.service == 'all' || github.event.inputs.service == 'order'
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking OrderService.Infra path..."
+          ls -la src/services/OrderService/
           cd src/services/OrderService/OrderService.Infra
+          echo "Successfully changed to OrderService.Infra directory"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Would apply Order Service migrations"
             dotnet ef migrations list --no-build
@@ -181,7 +220,11 @@ jobs:
       - name: Run Cart Service Migration
         if: github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking CartService.Infra path..."
+          ls -la src/services/CartService/
           cd src/services/CartService/CartService.Infra
+          echo "Successfully changed to CartService.Infra directory"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Would apply Cart Service migrations"
             dotnet ef migrations list --no-build
@@ -212,4 +255,8 @@ jobs:
           fi
           if [ "${{ github.event.inputs.service }}" = "all" ] || [ "${{ github.event.inputs.service }}" = "cart" ]; then
             echo "- ✅ Cart Service" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "_Note: This was a dry run. No changes were applied._" >> $GITHUB_STEP_SUMMARY
           fi
