@@ -132,6 +132,42 @@ jobs:
           dotnet tool install --global dotnet-ef
           dotnet tool restore
       
+      - name: Get Runner IP Address
+        id: runner-ip
+        run: |
+          echo "=== GitHub Actions Runner IP Address ==="
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "Runner IP: $RUNNER_IP"
+          echo "ip=$RUNNER_IP" >> $GITHUB_OUTPUT
+          echo ""
+      
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Add IP to Azure SQL Firewall
+        id: add-firewall-rule
+        run: |
+          echo "=== Adding IP to Azure SQL Firewall ==="
+          RUNNER_IP="${{ steps.runner-ip.outputs.ip }}"
+          RULE_NAME="GitHubActions-Runner-${{ github.run_id }}"
+          
+          echo "Adding firewall rule: $RULE_NAME for IP: $RUNNER_IP"
+          
+          az sql server firewall-rule create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --server ${{ secrets.AZURE_SQL_SERVER }} \
+            --name "$RULE_NAME" \
+            --start-ip-address "$RUNNER_IP" \
+            --end-ip-address "$RUNNER_IP"
+          
+          echo "rule_name=$RULE_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Firewall rule added successfully"
+          echo ""
+          echo "Waiting 30 seconds for firewall rule to propagate..."
+          sleep 30
+      
       - name: Set migration info
         id: migration-info
         run: |
@@ -144,6 +180,11 @@ jobs:
       - name: Run Restaurant Service Migration
         if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'restaurant'
         run: |
+          echo "=== Restaurant Service Migration ==="
+          echo "Runner IP: ${{ steps.runner-ip.outputs.ip }}"
+          echo "Connection String: ${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}"
+          echo ""
+          
           cd src/services/RestaurantService/RestaurantService.Infra
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Restaurant Service migrations"
@@ -158,6 +199,10 @@ jobs:
       - name: Run Order Service Migration
         if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'order'
         run: |
+          echo "=== Order Service Migration ==="
+          echo "Runner IP: ${{ steps.runner-ip.outputs.ip }}"
+          echo ""
+          
           cd src/services/OrderService/OrderService.Infra
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Order Service migrations"
@@ -172,6 +217,10 @@ jobs:
       - name: Run Cart Service Migration
         if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
         run: |
+          echo "=== Cart Service Migration ==="
+          echo "Runner IP: ${{ steps.runner-ip.outputs.ip }}"
+          echo ""
+          
           cd src/services/CartService/CartService.Infra
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Cart Service migrations"
@@ -193,6 +242,7 @@ jobs:
           echo "**Dry Run:** ${{ steps.migration-info.outputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ steps.migration-info.outputs.commit_sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ steps.migration-info.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Runner IP:** ${{ steps.runner-ip.outputs.ip }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Migrated Services:" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event.inputs.service }}" = "all" ] || [ "${{ github.event.inputs.service }}" = "restaurant" ]; then
@@ -207,4 +257,29 @@ jobs:
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ This was a dry run. No changes were applied to the databases." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Azure SQL Firewall Setup:" >> $GITHUB_STEP_SUMMARY
+          echo "- **IP Address:** ${{ steps.runner-ip.outputs.ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rule Name:** ${{ steps.add-firewall-rule.outputs.rule_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** Automatically managed by workflow" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Remove IP from Azure SQL Firewall
+        if: always()
+        run: |
+          echo "=== Cleaning up Azure SQL Firewall Rule ==="
+          RULE_NAME="${{ steps.add-firewall-rule.outputs.rule_name }}"
+          
+          if [ -n "$RULE_NAME" ]; then
+            echo "Removing firewall rule: $RULE_NAME"
+            
+            az sql server firewall-rule delete \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --server ${{ secrets.AZURE_SQL_SERVER }} \
+              --name "$RULE_NAME" \
+              --yes
+            
+            echo "✅ Firewall rule removed successfully"
+          else
+            echo "⚠️  No firewall rule to remove"
           fi
