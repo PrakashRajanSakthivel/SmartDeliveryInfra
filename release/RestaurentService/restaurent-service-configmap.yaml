@@ -14,13 +14,18 @@ data:
       },
       "AllowedHosts": "*",
       "ConnectionStrings": {
-        "RestaurantDatabase": "Data Source=.;Initial Catalog=RestaurentServiceDb;Integrated Security=True;TrustServerCertificate=True;"
+        "RestaurantDatabase": "PLACEHOLDER_DB_CONNECTION_STRING"
       },
       "Jwt": {
-        "Issuer": "SmartOrderSystem",
-        "Audience": "SmartOrderSystemUsers",
-        "SecretKey": "VerySecretKeyForSigningTokens123!"
+        "Issuer": "PLACEHOLDER_JWT_ISSUER",
+        "Audience": "PLACEHOLDER_JWT_AUDIENCE",
+        "SecretKey": "PLACEHOLDER_JWT_SECRET_KEY"
       },
+      "Elasticsearch": {
+        "Uri": "PLACEHOLDER_ELASTICSEARCH_URI",
+        "Username": "elastic",
+        "Password": "yourpassword"
+     },
       "Serilog": {
         "Using": [ "Serilog.Sinks.Console", "Serilog.Sinks.Elasticsearch" ],
         "MinimumLevel": {
@@ -37,7 +42,7 @@ data:
           {
             "Name": "Elasticsearch",
             "Args": {
-              "nodeUris": "http://localhost:9200",
+              "nodeUris": "PLACEHOLDER_ELASTICSEARCH_URI",
               "indexFormat": "orderservice-logs-{0:yyyy.MM}",
               "autoRegisterTemplate": true
             }

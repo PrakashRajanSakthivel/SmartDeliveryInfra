@@ -22,7 +22,7 @@ spec:
         image: ghcr.io/prakashrajansakthivel/restaurant:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         resources:
           requests:
             memory: "256Mi"

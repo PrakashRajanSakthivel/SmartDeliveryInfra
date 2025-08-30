@@ -7,3 +7,6 @@
 .vs/Learn/CopilotIndices/17.14.939.21063/SemanticSymbols.db-wal
 .vs/Learn/FileContentIndex/d2f69f11-6f5a-46f8-982c-faa9aa69efa6.vsidx
 .vs/
+gha-kubeconfig.yaml
+kubeconfig
+list-builds.ps1

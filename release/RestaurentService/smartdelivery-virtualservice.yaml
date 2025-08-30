@@ -19,7 +19,7 @@ spec:
     - destination:
         host: restaurent-service.smartdelivery.svc.cluster.local
         port:
-          number: 80
+          number: 8080
 
   # Route for OrderService (You will create this later)
   - match:
@@ -41,4 +41,4 @@ spec:
     - destination:
         host: restaurent-service.smartdelivery.svc.cluster.local # or a dedicated frontend service
         port:
-          number: 80
+          number: 8080

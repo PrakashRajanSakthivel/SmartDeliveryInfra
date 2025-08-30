@@ -126,9 +126,37 @@ jobs:
           # Add image pull policy for versioned tag
           sed -i '/image:/a\        imagePullPolicy: Always' release/RestaurentService/restaurent-service-deployment.yaml
 
-      - name: Deploy ConfigMap
+      - name: Process and Deploy ConfigMap
         run: |
-          kubectl --kubeconfig=kubeconfig apply -f release/RestaurentService/restaurent-service-configmap.yaml
+          # Create a temporary ConfigMap file with secrets replaced
+          cp release/RestaurentService/restaurent-service-configmap.yaml /tmp/configmap-template.yaml
+          
+          # Replace database connection string
+          sed -i 's|PLACEHOLDER_DB_CONNECTION_STRING|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
+          
+          # Replace JWT secret key
+          sed -i 's|PLACEHOLDER_JWT_SECRET_KEY|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+          
+          # Replace JWT issuer if provided
+          if [ -n "${{ secrets.JWT_ISSUER }}" ]; then
+            sed -i 's|PLACEHOLDER_JWT_ISSUER|${{ secrets.JWT_ISSUER }}|g' /tmp/configmap-template.yaml
+          fi
+          
+          # Replace JWT audience if provided
+          if [ -n "${{ secrets.JWT_AUDIENCE }}" ]; then
+            sed -i 's|PLACEHOLDER_JWT_AUDIENCE|${{ secrets.JWT_AUDIENCE }}|g' /tmp/configmap-template.yaml
+          fi
+          
+          # Replace Elasticsearch URI if provided
+          if [ -n "${{ secrets.ELASTICSEARCH_URI }}" ]; then
+            sed -i 's|PLACEHOLDER_ELASTICSEARCH_URI|${{ secrets.ELASTICSEARCH_URI }}|g' /tmp/configmap-template.yaml
+          fi
+          
+          # Deploy the processed ConfigMap
+          kubectl --kubeconfig=kubeconfig apply -f /tmp/configmap-template.yaml
+          
+          # Clean up temporary file
+          rm /tmp/configmap-template.yaml
 
       - name: Deploy Service
         run: |
