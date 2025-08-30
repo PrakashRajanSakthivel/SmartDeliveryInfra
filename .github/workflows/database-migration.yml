@@ -58,12 +58,22 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       
-      - name: Restore Dependencies
+      - name: List All Directories
         run: |
-          echo "Restoring dependencies for all projects..."
-          dotnet restore src/services/RestaurantService/RestaurantService.Infra/RestaurantService.Infra.csproj
-          dotnet restore src/services/OrderService/OrderService.Infra/OrderService.Infra.csproj
-          dotnet restore src/services/CartService/CartService.Infra/CartService.Infra.csproj
+          echo "=== Listing All Directories ==="
+          echo "Current directory: $(pwd)"
+          echo ""
+          echo "Repository root:"
+          find . -maxdepth 1 -type d | sort
+          echo ""
+          echo "All .csproj files:"
+          find . -name "*.csproj" | sort
+          echo ""
+          echo "Services directory structure:"
+          find src/services -type d | sort
+          echo ""
+          echo "All files in services:"
+          find src/services -name "*.csproj" | sort
       
       - name: Verify Repository Structure
         run: |
@@ -84,44 +94,51 @@ jobs:
           echo "CartService directory contents:"
           ls -la src/services/CartService/
       
-      - name: Validate Restaurant Service Migrations
+      - name: Check Service Directories
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking if path exists: src/services/RestaurantService/RestaurantService.Infra"
-          ls -la src/services/RestaurantService/
-          cd src/services/RestaurantService/RestaurantService.Infra
-          echo "Successfully changed to RestaurantService.Infra directory"
-          echo "Checking if migrations directory exists:"
-          ls -la Data/Migrations/
-          echo "Attempting to list migrations:"
-          dotnet ef migrations list --no-build || echo "Migration list failed, but continuing..."
-          echo "Restaurant Service validation completed"
-      
-      - name: Validate Order Service Migrations
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking if path exists: src/services/OrderService/OrderService.Infra"
-          ls -la src/services/OrderService/
-          cd src/services/OrderService/OrderService.Infra
-          echo "Successfully changed to OrderService.Infra directory"
-          echo "Checking if migrations directory exists:"
-          ls -la Data/Migrations/
-          echo "Attempting to list migrations:"
-          dotnet ef migrations list --no-build || echo "Migration list failed, but continuing..."
-          echo "Order Service validation completed"
-      
-      - name: Validate Cart Service Migrations
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking if path exists: src/services/CartService/CartService.Infra"
-          ls -la src/services/CartService/
-          cd src/services/CartService/CartService.Infra
-          echo "Successfully changed to CartService.Infra directory"
-          echo "Checking if migrations directory exists:"
-          ls -la Migrations/
-          echo "Attempting to list migrations:"
-          dotnet ef migrations list --no-build || echo "Migration list failed, but continuing..."
-          echo "Cart Service validation completed"
+          echo "=== Checking Service Directories ==="
+          echo ""
+          echo "Restaurant Service:"
+          if [ -d "src/services/RestaurantService/RestaurantService.Infra" ]; then
+            echo "✅ RestaurantService.Infra directory exists"
+            ls -la src/services/RestaurantService/RestaurantService.Infra/
+            if [ -d "src/services/RestaurantService/RestaurantService.Infra/Data/Migrations" ]; then
+              echo "✅ Migrations directory exists"
+              ls -la src/services/RestaurantService/RestaurantService.Infra/Data/Migrations/
+            else
+              echo "❌ Migrations directory not found"
+            fi
+          else
+            echo "❌ RestaurantService.Infra directory not found"
+          fi
+          echo ""
+          echo "Order Service:"
+          if [ -d "src/services/OrderService/OrderService.Infra" ]; then
+            echo "✅ OrderService.Infra directory exists"
+            ls -la src/services/OrderService/OrderService.Infra/
+            if [ -d "src/services/OrderService/OrderService.Infra/Data/Migrations" ]; then
+              echo "✅ Migrations directory exists"
+              ls -la src/services/OrderService/OrderService.Infra/Data/Migrations/
+            else
+              echo "❌ Migrations directory not found"
+            fi
+          else
+            echo "❌ OrderService.Infra directory not found"
+          fi
+          echo ""
+          echo "Cart Service:"
+          if [ -d "src/services/CartService/CartService.Infra" ]; then
+            echo "✅ CartService.Infra directory exists"
+            ls -la src/services/CartService/CartService.Infra/
+            if [ -d "src/services/CartService/CartService.Infra/Migrations" ]; then
+              echo "✅ Migrations directory exists"
+              ls -la src/services/CartService/CartService.Infra/Migrations/
+            else
+              echo "❌ Migrations directory not found"
+            fi
+          else
+            echo "❌ CartService.Infra directory not found"
+          fi
 
   migrate-database:
     runs-on: ubuntu-latest
@@ -275,4 +292,7 @@ jobs:
           if [ "${{ github.event.inputs.service }}" = "all" ] || [ "${{ github.event.inputs.service }}" = "cart" ]; then
             echo "- ✅ Cart Service" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ This was a dry run. No changes were applied to the databases." >> $GITHUB_STEP_SUMMARY
+          fi
