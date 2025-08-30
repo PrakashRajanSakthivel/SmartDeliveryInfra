@@ -186,6 +186,18 @@ jobs:
           echo ""
           
           cd src/services/RestaurantService/RestaurantService.Infra
+          
+          # Create appsettings.json with connection string for EF Core tools
+          cat > appsettings.json << EOF
+          {
+            "ConnectionStrings": {
+              "RestaurantDatabase": "${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}"
+            }
+          }
+          EOF
+          
+          echo "Created appsettings.json for EF Core tools"
+          
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Restaurant Service migrations"
             dotnet ef migrations list --no-build
@@ -204,6 +216,18 @@ jobs:
           echo ""
           
           cd src/services/OrderService/OrderService.Infra
+          
+          # Create appsettings.json with connection string for EF Core tools
+          cat > appsettings.json << EOF
+          {
+            "ConnectionStrings": {
+              "OrderDatabase": "${{ secrets.ORDER_DB_CONNECTION_STRING }}"
+            }
+          }
+          EOF
+          
+          echo "Created appsettings.json for EF Core tools"
+          
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Order Service migrations"
             dotnet ef migrations list --no-build
@@ -213,7 +237,7 @@ jobs:
           fi
         env:
           ConnectionStrings__OrderDatabase: ${{ secrets.ORDER_DB_CONNECTION_STRING }}
-      
+    
       - name: Run Cart Service Migration
         if: env.RUN_MIGRATIONS_IN_PR == 'true' || github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
         run: |
@@ -222,6 +246,18 @@ jobs:
           echo ""
           
           cd src/services/CartService/CartService.Infra
+          
+          # Create appsettings.json with connection string for EF Core tools
+          cat > appsettings.json << EOF
+          {
+            "ConnectionStrings": {
+              "CartDatabase": "${{ secrets.CART_DB_CONNECTION_STRING }}"
+            }
+          }
+          EOF
+          
+          echo "Created appsettings.json for EF Core tools"
+          
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "DRY RUN: Cart Service migrations"
             dotnet ef migrations list --no-build
