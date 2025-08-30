@@ -196,15 +196,22 @@ jobs:
           }
           EOF
           
-          echo "Created appsettings.json for EF Core tools"
-          
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "DRY RUN: Restaurant Service migrations"
-            dotnet ef migrations list --no-build
-          else
-            echo "Applying Restaurant Service migrations..."
-            dotnet ef database update --verbose
-          fi
+                     echo "Created appsettings.json for EF Core tools"
+           
+           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+             echo "DRY RUN: Restaurant Service migrations"
+             dotnet ef migrations list --no-build
+           else
+             echo "Checking pending migrations..."
+             PENDING_MIGRATIONS=$(dotnet ef migrations list --no-build | grep -c "Pending" || echo "0")
+             
+             if [ "$PENDING_MIGRATIONS" -gt 0 ]; then
+               echo "Found $PENDING_MIGRATIONS pending migrations. Applying..."
+               dotnet ef database update --verbose
+             else
+               echo "✅ No pending migrations found. Database is up to date."
+             fi
+           fi
         env:
           ConnectionStrings__RestaurantDatabase: ${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}
       
@@ -226,15 +233,22 @@ jobs:
           }
           EOF
           
-          echo "Created appsettings.json for EF Core tools"
-          
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "DRY RUN: Order Service migrations"
-            dotnet ef migrations list --no-build
-          else
-            echo "Applying Order Service migrations..."
-            dotnet ef database update --verbose
-          fi
+                     echo "Created appsettings.json for EF Core tools"
+           
+           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+             echo "DRY RUN: Order Service migrations"
+             dotnet ef migrations list --no-build
+           else
+             echo "Checking pending migrations..."
+             PENDING_MIGRATIONS=$(dotnet ef migrations list --no-build | grep -c "Pending" || echo "0")
+             
+             if [ "$PENDING_MIGRATIONS" -gt 0 ]; then
+               echo "Found $PENDING_MIGRATIONS pending migrations. Applying..."
+               dotnet ef database update --verbose
+             else
+               echo "✅ No pending migrations found. Database is up to date."
+             fi
+           fi
         env:
           ConnectionStrings__OrderDatabase: ${{ secrets.ORDER_DB_CONNECTION_STRING }}
     
@@ -256,15 +270,22 @@ jobs:
           }
           EOF
           
-          echo "Created appsettings.json for EF Core tools"
-          
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "DRY RUN: Cart Service migrations"
-            dotnet ef migrations list --no-build
-          else
-            echo "Applying Cart Service migrations..."
-            dotnet ef database update --verbose
-          fi
+                     echo "Created appsettings.json for EF Core tools"
+           
+           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+             echo "DRY RUN: Cart Service migrations"
+             dotnet ef migrations list --no-build
+           else
+             echo "Checking pending migrations..."
+             PENDING_MIGRATIONS=$(dotnet ef migrations list --no-build | grep -c "Pending" || echo "0")
+             
+             if [ "$PENDING_MIGRATIONS" -gt 0 ]; then
+               echo "Found $PENDING_MIGRATIONS pending migrations. Applying..."
+               dotnet ef database update --verbose
+             else
+               echo "✅ No pending migrations found. Database is up to date."
+             fi
+           fi
         env:
           ConnectionStrings__CartDatabase: ${{ secrets.CART_DB_CONNECTION_STRING }}
       
@@ -309,11 +330,10 @@ jobs:
           if [ -n "$RULE_NAME" ]; then
             echo "Removing firewall rule: $RULE_NAME"
             
-            az sql server firewall-rule delete \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --server ${{ secrets.AZURE_SQL_SERVER }} \
-              --name "$RULE_NAME" \
-              --yes
+                         az sql server firewall-rule delete \
+               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+               --server ${{ secrets.AZURE_SQL_SERVER }} \
+               --name "$RULE_NAME"
             
             echo "✅ Firewall rule removed successfully"
           else
