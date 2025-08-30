@@ -66,92 +66,40 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       
-      - name: List All Directories
+      - name: Validate Migrations
         run: |
-          echo "=== Listing All Directories ==="
-          echo "Current directory: $(pwd)"
-          echo ""
-          echo "Repository root:"
-          find . -maxdepth 1 -type d | sort
-          echo ""
-          echo "All .csproj files:"
-          find . -name "*.csproj" | sort
-          echo ""
-          echo "Services directory structure:"
-          find src/services -type d | sort
-          echo ""
-          echo "All files in services:"
-          find src/services -name "*.csproj" | sort
-      
-      - name: Verify Repository Structure
-        run: |
-          echo "=== Repository Structure Verification ==="
-          echo "Current directory: $(pwd)"
-          echo "Repository root contents:"
-          ls -la
-          echo ""
-          echo "Services directory contents:"
-          ls -la src/services/
-          echo ""
-          echo "RestaurantService directory contents:"
-          ls -la src/services/RestaurantService/
-          echo ""
-          echo "OrderService directory contents:"
-          ls -la src/services/OrderService/
-          echo ""
-          echo "CartService directory contents:"
-          ls -la src/services/CartService/
-      
-      - name: Check Service Directories
-        run: |
-          echo "=== Checking Service Directories ==="
-          echo ""
-          echo "Restaurant Service:"
-          if [ -d "src/services/RestaurantService/RestaurantService.Infra" ]; then
-            echo "✅ RestaurantService.Infra directory exists"
-            ls -la src/services/RestaurantService/RestaurantService.Infra/
-            if [ -d "src/services/RestaurantService/RestaurantService.Infra/Data/Migrations" ]; then
-              echo "✅ Migrations directory exists"
-              ls -la src/services/RestaurantService/RestaurantService.Infra/Data/Migrations/
-            else
-              echo "❌ Migrations directory not found"
-            fi
+          echo "=== Validating Migrations ==="
+          echo "Checking if all service migrations are valid..."
+          
+          # Restaurant Service
+          if [ -d "src/services/RestaurantService/RestaurantService.Infra/Data/Migrations" ]; then
+            echo "✅ Restaurant Service migrations found"
           else
-            echo "❌ RestaurantService.Infra directory not found"
+            echo "❌ Restaurant Service migrations not found"
+            exit 1
           fi
-          echo ""
-          echo "Order Service:"
-          if [ -d "src/services/OrderService/OrderService.Infra" ]; then
-            echo "✅ OrderService.Infra directory exists"
-            ls -la src/services/OrderService/OrderService.Infra/
-            if [ -d "src/services/OrderService/OrderService.Infra/Data/Migrations" ]; then
-              echo "✅ Migrations directory exists"
-              ls -la src/services/OrderService/OrderService.Infra/Data/Migrations/
-            else
-              echo "❌ Migrations directory not found"
-            fi
+          
+          # Order Service
+          if [ -d "src/services/OrderService/OrderService.Infra/Data/Migrations" ]; then
+            echo "✅ Order Service migrations found"
           else
-            echo "❌ OrderService.Infra directory not found"
+            echo "❌ Order Service migrations not found"
+            exit 1
           fi
-          echo ""
-          echo "Cart Service:"
-          if [ -d "src/services/CartService/CartService.Infra" ]; then
-            echo "✅ CartService.Infra directory exists"
-            ls -la src/services/CartService/CartService.Infra/
-            if [ -d "src/services/CartService/CartService.Infra/Migrations" ]; then
-              echo "✅ Migrations directory exists"
-              ls -la src/services/CartService/CartService.Infra/Migrations/
-            else
-              echo "❌ Migrations directory not found"
-            fi
+          
+          # Cart Service
+          if [ -d "src/services/CartService/CartService.Infra/Migrations" ]; then
+            echo "✅ Cart Service migrations found"
           else
-            echo "❌ CartService.Infra directory not found"
+            echo "❌ Cart Service migrations not found"
+            exit 1
           fi
+          
+          echo "All migrations validated successfully!"
 
   migrate-database:
     runs-on: ubuntu-latest
     needs: validate-migrations
-    environment: ${{ github.event.inputs.environment || 'production' }}
     
     steps:
       - name: Checkout Application Repository
@@ -179,70 +127,14 @@ jobs:
           echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
       
-      - name: Create migration script
-        id: create-script
-        run: |
-          cat > migrate-databases.ps1 << 'EOF'
-          param(
-              [string]$Environment,
-              [string]$Service = "all",
-              [bool]$DryRun = $false
-          )
-          
-          Write-Host "Starting database migration for environment: $Environment, service: $Service, dry run: $DryRun"
-          
-          $services = @()
-          if ($Service -eq "all") {
-              $services = @("restaurant", "order", "cart")
-          } else {
-              $services = @($Service)
-          }
-          
-          foreach ($svc in $services) {
-              Write-Host "Processing $svc service..."
-              
-              $projectPath = ""
-              $connectionStringKey = ""
-              
-              switch ($svc) {
-                  "restaurant" {
-                      $projectPath = "src/services/RestaurantService/RestaurantService.Infra"
-                      $connectionStringKey = "RestaurantDatabase"
-                  }
-                  "order" {
-                      $projectPath = "src/services/OrderService/OrderService.Infra"
-                      $connectionStringKey = "OrderDatabase"
-                  }
-                  "cart" {
-                      $projectPath = "src/services/CartService/CartService.Infra"
-                      $connectionStringKey = "CartDatabase"
-                  }
-              }
-              
-              if ($projectPath -and $connectionStringKey) {
-                  Write-Host "Migrating $svc service database..."
-                  
-                  if ($DryRun) {
-                      Write-Host "DRY RUN: Would apply migrations for $svc"
-                      dotnet ef migrations list --project $projectPath
-                  } else {
-                      dotnet ef database update --project $projectPath --verbose
-                      Write-Host "Successfully migrated $svc database"
-                  }
-              }
-          }
-          EOF
+
       
       - name: Run Restaurant Service Migration
         if: github.event.inputs.service == 'all' || github.event.inputs.service == 'restaurant'
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking RestaurantService.Infra path..."
-          ls -la src/services/RestaurantService/
           cd src/services/RestaurantService/RestaurantService.Infra
-          echo "Successfully changed to RestaurantService.Infra directory"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "DRY RUN: Would apply Restaurant Service migrations"
+            echo "DRY RUN: Restaurant Service migrations"
             dotnet ef migrations list --no-build
           else
             echo "Applying Restaurant Service migrations..."
@@ -254,13 +146,9 @@ jobs:
       - name: Run Order Service Migration
         if: github.event.inputs.service == 'all' || github.event.inputs.service == 'order'
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking OrderService.Infra path..."
-          ls -la src/services/OrderService/
           cd src/services/OrderService/OrderService.Infra
-          echo "Successfully changed to OrderService.Infra directory"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "DRY RUN: Would apply Order Service migrations"
+            echo "DRY RUN: Order Service migrations"
             dotnet ef migrations list --no-build
           else
             echo "Applying Order Service migrations..."
@@ -272,13 +160,9 @@ jobs:
       - name: Run Cart Service Migration
         if: github.event.inputs.service == 'all' || github.event.inputs.service == 'cart'
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking CartService.Infra path..."
-          ls -la src/services/CartService/
           cd src/services/CartService/CartService.Infra
-          echo "Successfully changed to CartService.Infra directory"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "DRY RUN: Would apply Cart Service migrations"
+            echo "DRY RUN: Cart Service migrations"
             dotnet ef migrations list --no-build
           else
             echo "Applying Cart Service migrations..."
