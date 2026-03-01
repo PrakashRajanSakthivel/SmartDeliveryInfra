@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: restaurent-service-config
+  name: order-service-config
   namespace: smartdelivery
 data:
   appsettings.json: |
@@ -14,7 +14,7 @@ data:
       },
       "AllowedHosts": "*",
       "ConnectionStrings": {
-        "RestaurantDatabase": "__RESTAURANT_DB_CONNECTION__"
+        "OrderDatabase": "__ORDER_DB_CONNECTION__"
       },
-      "ServiceName": "RestaurentService"
+      "ServiceName": "OrderService"
     }

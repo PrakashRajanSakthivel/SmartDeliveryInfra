@@ -5,7 +5,7 @@ metadata:
   namespace: smartdelivery
 spec:
   hosts:
-  - "api.smartdelivery.local"  # Single domain for all services
+  - "api.smartdelivery.local"
   gateways:
   - istio-system/istio-public-gateway
   http:
@@ -30,6 +30,42 @@ spec:
     route:
     - destination:
         host: order-service.smartdelivery.svc.cluster.local # Placeholder for your next service
+        port:
+          number: 80
+
+  # Route for PaymentService
+  - match:
+    - uri:
+        prefix: /paymentservice
+    rewrite:
+      uri: /
+    route:
+    - destination:
+        host: payment-service.smartdelivery.svc.cluster.local
+        port:
+          number: 80
+
+  # Route for CartService
+  - match:
+    - uri:
+        prefix: /cartservice
+    rewrite:
+      uri: /
+    route:
+    - destination:
+        host: cart-service.smartdelivery.svc.cluster.local
+        port:
+          number: 80
+
+  # Route for AuthService
+  - match:
+    - uri:
+        prefix: /authservice
+    rewrite:
+      uri: /
+    route:
+    - destination:
+        host: auth-service.smartdelivery.svc.cluster.local
         port:
           number: 80
 

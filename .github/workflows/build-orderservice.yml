@@ -1,9 +1,9 @@
-name: Build and Push Restaurant Service
+name: Build and Push Order Service
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '10 0 * * *'
   push:
     branches:
       - main
@@ -12,10 +12,10 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     env:
-      PROJECT_PATH: src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj
-      SERVICE_FOLDER: RestaurantService
-      DLL_NAME: RestaurantService.API.dll
-      IMAGE_NAME: restaurentservice
+      PROJECT_PATH: src/services/OrderService/OrderService.API/OrderService.API.csproj
+      SERVICE_FOLDER: OrderService
+      DLL_NAME: OrderService.API.dll
+      IMAGE_NAME: orderservice
 
     steps:
       - name: Checkout Code Repo
@@ -47,7 +47,6 @@ jobs:
           ENV ASPNETCORE_URLS=http://+:8080
           ENV ASPNETCORE_ENVIRONMENT=Kubernetes
           COPY ./publish/${SERVICE_FOLDER}/ .
-          RUN rm -f appsettings.json appsettings.Development.json appsettings.Production.json
           ENTRYPOINT ["dotnet", "${DLL_NAME}"]
           EOF
 
@@ -61,10 +60,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
-      - name: Build and Push Restaurant Image
+      - name: Build and Push Order Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile.${{ env.IMAGE_NAME }}
           push: true
-          tags: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/${{ env.IMAGE_NAME }}:latest
+          tags: ghcr.io/prakashrajansakthivel/${{ env.IMAGE_NAME }}:latest

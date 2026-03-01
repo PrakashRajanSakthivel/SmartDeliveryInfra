@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: restaurent-service-config
+  name: payment-service-config
   namespace: smartdelivery
 data:
   appsettings.json: |
@@ -13,8 +13,5 @@ data:
         }
       },
       "AllowedHosts": "*",
-      "ConnectionStrings": {
-        "RestaurantDatabase": "__RESTAURANT_DB_CONNECTION__"
-      },
-      "ServiceName": "RestaurentService"
+      "ServiceName": "PaymentService"
     }
