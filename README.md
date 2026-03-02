@@ -3,3 +3,7 @@
 helm install prometheus prometheus-community/prometheus --namespace monitoring -f prometheus-values.yaml
 
 helm install grafana grafana/grafana --namespace monitoring -f grafana-values.yaml
+
+## Documentation
+
+- CI/CD Technical Specification: [docs/TECH_SPEC_CICD.md](docs/TECH_SPEC_CICD.md)

@@ -1,0 +1,68 @@
+name: Release Restaurant Service to K3s
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+      build_run_id:
+        description: 'Build run ID to deploy (optional - leave empty for latest)'
+        required: false
+        type: string
+        default: ''
+  workflow_run:
+    workflows: ["Build and Push Restaurant Service"]
+    types:
+      - completed
+    branches:
+      - main
+      - dockerbuilds
+      - feature/restaurentservice
+  push:
+    branches:
+      - main
+      - dockerbuilds
+      - feature/restaurentservice
+    paths:
+      - 'release/RestaurentService/**'
+      - '.github/workflows/release-restaurentservice.yml'
+  pull_request:
+    branches:
+      - main
+      - dockerbuilds
+    paths:
+      - 'release/RestaurentService/**'
+      - '.github/workflows/release-restaurentservice.yml'
+
+jobs:
+  deploy:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/release-service-reusable.yml
+    secrets: inherit
+    with:
+      service_display_name: Restaurant Service
+      image_name: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice
+      deployment_name: restaurent-service
+      app_label: restaurent-service
+      configmap_mode: restaurant
+      deployment_manifest: release/RestaurentService/restaurent-service-deployment.yaml
+      configmap_manifest: release/RestaurentService/restaurent-service-configmap.yaml
+      service_manifest: release/RestaurentService/restaurent-service-service.yaml
+      hpa_manifest: release/RestaurentService/restaurent-service-hpa.yaml
+      namespace_manifest: release/namespace.yaml
+      enable_virtualservice: true
+      virtualservice_manifest: release/RestaurentService/smartdelivery-virtualservice.yaml
+      environment: ${{ github.event.inputs.environment || 'production' }}
+      build_run_id: ${{ github.event.inputs.build_run_id || '' }}
+      trigger_source: ${{ github.event_name }}
+      workflow_run_id: ${{ github.event.workflow_run.id || '' }}
+      workflow_run_number: ${{ github.event.workflow_run.run_number || '' }}
+      workflow_run_created_at: ${{ github.event.workflow_run.created_at || '' }}
+      workflow_run_head_sha: ${{ github.event.workflow_run.head_sha || '' }}
+      workflow_run_head_branch: ${{ github.event.workflow_run.head_branch || '' }}

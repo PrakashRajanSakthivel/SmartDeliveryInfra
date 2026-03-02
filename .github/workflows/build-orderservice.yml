@@ -11,60 +11,13 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
-    env:
-      PROJECT_PATH: src/services/OrderService/OrderService.API/OrderService.API.csproj
-      SERVICE_FOLDER: OrderService
-      DLL_NAME: OrderService.API.dll
-      IMAGE_NAME: orderservice
-
-    steps:
-      - name: Checkout Code Repo
-        uses: actions/checkout@v4
-        with:
-          repository: PrakashRajanSakthivel/SmartDelivery
-          ref: feature/buildfix
-          token: ${{ secrets.CODE_REPO_TOKEN }}
-
-      - name: Clean workspace
-        run: git clean -fdx
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build "$PROJECT_PATH" --configuration Release
-
-      - name: Publish
-        run: dotnet publish "$PROJECT_PATH" --configuration Release --output "./publish/$SERVICE_FOLDER"
-
-      - name: Create runtime Dockerfile
-        run: |
-          cat <<EOF > Dockerfile.${IMAGE_NAME}
-          FROM mcr.microsoft.com/dotnet/aspnet:10.0
-          WORKDIR /app
-          ENV ASPNETCORE_URLS=http://+:8080
-          ENV ASPNETCORE_ENVIRONMENT=Kubernetes
-          COPY ./publish/${SERVICE_FOLDER}/ .
-          ENTRYPOINT ["dotnet", "${DLL_NAME}"]
-          EOF
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
-
-      - name: Build and Push Order Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile.${{ env.IMAGE_NAME }}
-          push: true
-          tags: ghcr.io/prakashrajansakthivel/${{ env.IMAGE_NAME }}:latest
+    uses: ./.github/workflows/build-service-reusable.yml
+    secrets: inherit
+    with:
+      service_display_name: Order Service
+      source_ref: feature/buildfix
+      project_path: src/services/OrderService/OrderService.API/OrderService.API.csproj
+      service_folder: OrderService
+      dll_name: OrderService.API.dll
+      dockerfile_name: orderservice
+      image_tag: ghcr.io/prakashrajansakthivel/orderservice:latest
