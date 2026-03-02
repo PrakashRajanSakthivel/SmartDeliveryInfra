@@ -2,11 +2,12 @@ name: Build and Push Restaurant Service
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+  # schedule:
+  #   - cron: '0 0 * * *'
   push:
     branches:
       - main
+      - feature/pipeline-init
 
 jobs:
   build-and-push:

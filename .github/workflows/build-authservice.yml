@@ -2,8 +2,8 @@ name: Build and Push Auth Service
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '40 0 * * *'
+  # schedule:
+  #   - cron: '40 0 * * *'
   push:
     branches:
       - main

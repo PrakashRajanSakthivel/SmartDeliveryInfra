@@ -2,11 +2,12 @@ name: Build and Push Payment Service
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '20 0 * * *'
+  # schedule:
+  #   - cron: '20 0 * * *'
   push:
     branches:
       - main
+      - feature/pipeline-init
 
 jobs:
   build-and-push:

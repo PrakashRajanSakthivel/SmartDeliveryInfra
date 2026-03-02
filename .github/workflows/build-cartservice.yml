@@ -2,11 +2,12 @@ name: Build and Push Cart Service
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '30 0 * * *'
+  # schedule:
+  #   - cron: '30 0 * * *'
   push:
     branches:
       - main
+      - feature/pipeline-init
 
 jobs:
   build-and-push:
