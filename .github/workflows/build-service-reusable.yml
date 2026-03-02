@@ -107,3 +107,4 @@ jobs:
           file: Dockerfile.${{ inputs.dockerfile_name }}
           push: true
           tags: ${{ inputs.image_tag }}
+          platforms: linux/amd64,linux/arm64
