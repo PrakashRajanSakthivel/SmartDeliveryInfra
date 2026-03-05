@@ -13,5 +13,50 @@ data:
         }
       },
       "AllowedHosts": "*",
+      "Jwt": {
+        "Issuer": "SmartOrderSystem",
+        "Audience": "SmartOrderSystemUsers",
+        "SecretKey": "VerySecretKeyForSigningTokens123!"
+      },
+      "Elasticsearch": {
+        "Uri": "http://elasticsearch-service:9200",
+        "Username": "elastic",
+        "Password": "yourpassword"
+      },
+      "Serilog": {
+        "Using": [ "Serilog.Sinks.Console", "Serilog.Sinks.Elasticsearch" ],
+        "MinimumLevel": {
+          "Default": "Information",
+          "Override": {
+            "Microsoft": "Warning",
+            "System": "Warning",
+            "Microsoft.AspNetCore": "Information"
+          }
+        },
+        "WriteTo": [
+          {
+            "Name": "Console"
+          },
+          {
+            "Name": "Elasticsearch",
+            "Args": {
+              "nodeUris": "http://elasticsearch-service:9200",
+              "indexFormat": "authservice-logs-{0:yyyy.MM}",
+              "autoRegisterTemplate": true,
+              "batchPostingLimit": 10,
+              "period": 2,
+              "inlineFields": true,
+              "bufferBaseFilename": "./logs/elasticsearch-buffer",
+              "emitEventFailure": "WriteToSelfLog",
+              "queueSizeLimit": 10000
+            }
+          }
+        ],
+        "Enrich": [ "FromLogContext", "WithMachineName", "WithProcessId" ],
+        "Properties": {
+          "Application": "AuthService",
+          "Environment": "Production"
+        }
+      },
       "ServiceName": "AuthService"
     }
