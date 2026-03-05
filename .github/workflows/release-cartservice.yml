@@ -1,0 +1,68 @@
+name: Release Cart Service to K3s
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+      build_run_id:
+        description: 'Build run ID to deploy (optional - leave empty for latest)'
+        required: false
+        type: string
+        default: ''
+  workflow_run:
+    workflows: ["Build and Push Cart Service"]
+    types:
+      - completed
+    branches:
+      - main
+      - dockerbuilds
+      - feature/restaurentservice
+      - feature/pipeline-init
+  push:
+    branches:
+      - main
+      - dockerbuilds
+      - feature/restaurentservice
+      - feature/pipeline-init
+    paths:
+      - 'release/CartService/**'
+      - '.github/workflows/release-cartservice.yml'
+  pull_request:
+    branches:
+      - main
+      - dockerbuilds
+    paths:
+      - 'release/CartService/**'
+      - '.github/workflows/release-cartservice.yml'
+
+jobs:
+  deploy:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/release-service-reusable.yml
+    secrets: inherit
+    with:
+      service_display_name: Cart Service
+      image_name: ghcr.io/prakashrajansakthivel/cartservice
+      deployment_name: cart-service
+      app_label: cart-service
+      configmap_mode: cart
+      deployment_manifest: release/CartService/cart-service-deployment.yaml
+      configmap_manifest: release/CartService/cart-service-configmap.yaml
+      service_manifest: release/CartService/cart-service-service.yaml
+      hpa_manifest: release/CartService/cart-service-hpa.yaml
+      namespace_manifest: release/namespace.yaml
+      environment: ${{ github.event.inputs.environment || 'production' }}
+      build_run_id: ${{ github.event.inputs.build_run_id || '' }}
+      trigger_source: ${{ github.event_name }}
+      workflow_run_id: ${{ github.event.workflow_run.id || '' }}
+      workflow_run_number: ${{ github.event.workflow_run.run_number || '' }}
+      workflow_run_created_at: ${{ github.event.workflow_run.created_at || '' }}
+      workflow_run_head_sha: ${{ github.event.workflow_run.head_sha || '' }}
+      workflow_run_head_branch: ${{ github.event.workflow_run.head_branch || '' }}

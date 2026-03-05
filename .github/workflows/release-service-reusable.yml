@@ -1,0 +1,271 @@
+name: Reusable Release Service to K3s
+
+on:
+  workflow_call:
+    inputs:
+      service_display_name:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+      deployment_name:
+        required: true
+        type: string
+      app_label:
+        required: true
+        type: string
+      configmap_mode:
+        required: false
+        type: string
+        default: none
+      deployment_manifest:
+        required: true
+        type: string
+      configmap_manifest:
+        required: true
+        type: string
+      service_manifest:
+        required: true
+        type: string
+      hpa_manifest:
+        required: true
+        type: string
+      namespace_manifest:
+        required: false
+        type: string
+        default: release/namespace.yaml
+      enable_virtualservice:
+        required: false
+        type: boolean
+        default: false
+      virtualservice_manifest:
+        required: false
+        type: string
+        default: ''
+      environment:
+        required: false
+        type: string
+        default: production
+      build_run_id:
+        required: false
+        type: string
+        default: ''
+      trigger_source:
+        required: false
+        type: string
+        default: workflow_dispatch
+      workflow_run_id:
+        required: false
+        type: string
+        default: ''
+      workflow_run_number:
+        required: false
+        type: string
+        default: ''
+      workflow_run_created_at:
+        required: false
+        type: string
+        default: ''
+      workflow_run_head_sha:
+        required: false
+        type: string
+        default: ''
+      workflow_run_head_branch:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      KUBECONFIG:
+        required: true
+      HCLOUD_TOKEN:
+        required: true
+      FIREWALL_ID:
+        required: true
+      GHCR_PAT:
+        required: true
+      CART_DB_CONNECTION_STRING:
+        required: false
+      ORDER_DB_CONNECTION_STRING:
+        required: false
+      RESTAURANT_DB_CONNECTION_STRING:
+        required: false
+      JWT_SECRET_KEY:
+        required: false
+      JWT_ISSUER:
+        required: false
+      JWT_AUDIENCE:
+        required: false
+      ELASTICSEARCH_URI:
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set build info
+        id: build-info
+        run: |
+          if [ "${{ inputs.trigger_source }}" = "workflow_run" ] && [ "${{ inputs.workflow_run_id }}" != "" ]; then
+            echo "build_number=${{ inputs.workflow_run_number }}" >> $GITHUB_OUTPUT
+            echo "image_tag=v${{ inputs.workflow_run_number }}" >> $GITHUB_OUTPUT
+            echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
+            echo "build_date=${{ inputs.workflow_run_created_at }}" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ inputs.workflow_run_head_sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ inputs.workflow_run_head_branch }}" >> $GITHUB_OUTPUT
+            echo "✅ Using build from workflow run #${{ inputs.workflow_run_number }}"
+          elif [ "${{ inputs.build_run_id }}" != "" ]; then
+            echo "build_number=${{ inputs.build_run_id }}" >> $GITHUB_OUTPUT
+            echo "image_tag=v${{ inputs.build_run_id }}" >> $GITHUB_OUTPUT
+            echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "✅ Using specific build #${{ inputs.build_run_id }}"
+          else
+            echo "build_number=latest" >> $GITHUB_OUTPUT
+            echo "image_tag=latest" >> $GITHUB_OUTPUT
+            echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "✅ Using latest image tag"
+          fi
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Write kubeconfig from secret
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          chmod 600 kubeconfig
+
+      - name: Open Hetzner Firewall port 6443
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File "base/open-firewall-port.ps1" -Port 6443 -Description "Kubernetes API for ${{ inputs.service_display_name }} deployment"
+
+      - name: Validate kubeconfig
+        run: |
+          kubectl --kubeconfig=kubeconfig get namespace smartdelivery
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f "${{ inputs.namespace_manifest }}"
+
+      - name: Create image pull secret if not exists
+        run: |
+          kubectl --kubeconfig=kubeconfig create secret docker-registry ghcr-pull-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GHCR_PAT }} \
+            --namespace=smartdelivery \
+            --dry-run=client -o yaml | kubectl --kubeconfig=kubeconfig apply -f -
+
+      - name: Update deployment image tag
+        run: |
+          sed -i "s|^\([[:space:]]*image:[[:space:]]*\).*|\1${{ steps.build-info.outputs.image_name }}:${{ steps.build-info.outputs.image_tag }}|g" "${{ inputs.deployment_manifest }}"
+
+          if ! grep -q "imagePullPolicy:" "${{ inputs.deployment_manifest }}"; then
+            sed -i '/image:/a\        imagePullPolicy: Always' "${{ inputs.deployment_manifest }}"
+          fi
+
+      - name: Process and Deploy ConfigMap
+        run: |
+          cp "${{ inputs.configmap_manifest }}" /tmp/configmap-template.yaml
+
+          if [ "${{ inputs.configmap_mode }}" = "cart" ] && [ -n "${{ secrets.CART_DB_CONNECTION_STRING }}" ]; then
+            sed -i 's|__CART_DB_CONNECTION__|${{ secrets.CART_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
+          fi
+
+          if [ "${{ inputs.configmap_mode }}" = "order" ] && [ -n "${{ secrets.ORDER_DB_CONNECTION_STRING }}" ]; then
+            sed -i 's|__ORDER_DB_CONNECTION__|${{ secrets.ORDER_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
+          fi
+
+          if [ "${{ inputs.configmap_mode }}" = "restaurant" ]; then
+            sed -i 's|PLACEHOLDER_DB_CONNECTION_STRING|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
+            sed -i 's|PLACEHOLDER_JWT_SECRET_KEY|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+
+            if [ -n "${{ secrets.JWT_ISSUER }}" ]; then
+              sed -i 's|PLACEHOLDER_JWT_ISSUER|${{ secrets.JWT_ISSUER }}|g' /tmp/configmap-template.yaml
+            fi
+
+            if [ -n "${{ secrets.JWT_AUDIENCE }}" ]; then
+              sed -i 's|PLACEHOLDER_JWT_AUDIENCE|${{ secrets.JWT_AUDIENCE }}|g' /tmp/configmap-template.yaml
+            fi
+
+            if [ -n "${{ secrets.ELASTICSEARCH_URI }}" ]; then
+              sed -i 's|PLACEHOLDER_ELASTICSEARCH_URI|${{ secrets.ELASTICSEARCH_URI }}|g' /tmp/configmap-template.yaml
+            fi
+          fi
+
+          kubectl --kubeconfig=kubeconfig apply -f /tmp/configmap-template.yaml
+          rm /tmp/configmap-template.yaml
+
+      - name: Deploy Service
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f "${{ inputs.service_manifest }}"
+
+      - name: Deploy Deployment
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f "${{ inputs.deployment_manifest }}"
+
+      - name: Deploy HPA
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f "${{ inputs.hpa_manifest }}"
+
+      - name: Deploy VirtualService (if enabled and Istio is available)
+        if: ${{ inputs.enable_virtualservice && inputs.virtualservice_manifest != '' }}
+        run: |
+          if kubectl --kubeconfig=kubeconfig get crd virtualservices.networking.istio.io >/dev/null 2>&1; then
+            kubectl --kubeconfig=kubeconfig apply -f "${{ inputs.virtualservice_manifest }}"
+            echo "VirtualService deployed successfully"
+          else
+            echo "Istio VirtualService CRD not found, skipping VirtualService deployment"
+          fi
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl --kubeconfig=kubeconfig rollout status deployment/${{ inputs.deployment_name }} -n smartdelivery --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl --kubeconfig=kubeconfig get pods -n smartdelivery -l app=${{ inputs.app_label }}
+
+          echo "=== Service Status ==="
+          kubectl --kubeconfig=kubeconfig get svc -n smartdelivery -l app=${{ inputs.app_label }}
+
+          echo "=== HPA Status ==="
+          kubectl --kubeconfig=kubeconfig get hpa -n smartdelivery
+
+      - name: Close Hetzner Firewall port 6443
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          FIREWALL_ID: ${{ secrets.FIREWALL_ID }}
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File "base/close-firewall-port.ps1" -Port 6443
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## 🚀 ${{ inputs.service_display_name }} Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ steps.build-info.outputs.image_name }}:${{ steps.build-info.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Number:** ${{ steps.build-info.outputs.build_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Date:** ${{ steps.build-info.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ steps.build-info.outputs.commit_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace:** smartdelivery" >> $GITHUB_STEP_SUMMARY

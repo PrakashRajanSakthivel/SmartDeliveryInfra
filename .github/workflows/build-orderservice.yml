@@ -1,0 +1,23 @@
+name: Build and Push Order Service
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '10 0 * * *'
+  push:
+    branches:
+      - main
+      - feature/pipeline-init
+
+jobs:
+  build-and-push:
+    uses: ./.github/workflows/build-service-reusable.yml
+    secrets: inherit
+    with:
+      service_display_name: Order Service
+      source_ref: feature/buildfix
+      project_path: src/services/OrderService/OrderService.API/OrderService.API.csproj
+      service_folder: OrderService
+      dll_name: OrderService.API.dll
+      dockerfile_name: orderservice
+      image_tag: ghcr.io/prakashrajansakthivel/orderservice:latest

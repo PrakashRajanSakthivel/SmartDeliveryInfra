@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: restaurent-service-config
+  name: cart-service-config
   namespace: smartdelivery
 data:
   appsettings.json: |
@@ -14,7 +14,7 @@ data:
       },
       "AllowedHosts": "*",
       "ConnectionStrings": {
-        "RestaurantDatabase": "__RESTAURANT_DB_CONNECTION__"
+        "CartDatabase": "__CART_DB_CONNECTION__"
       },
       "Jwt": {
         "Issuer": "SmartOrderSystem",
@@ -44,7 +44,7 @@ data:
             "Name": "Elasticsearch",
             "Args": {
               "nodeUris": "http://elasticsearch-service:9200",
-              "indexFormat": "restaurantservice-logs-{0:yyyy.MM}",
+              "indexFormat": "cartservice-logs-{0:yyyy.MM}",
               "autoRegisterTemplate": true,
               "batchPostingLimit": 10,
               "period": 2,
@@ -57,9 +57,9 @@ data:
         ],
         "Enrich": [ "FromLogContext", "WithMachineName", "WithProcessId" ],
         "Properties": {
-          "Application": "RestaurentService",
+          "Application": "CartService",
           "Environment": "Production"
         }
       },
-      "ServiceName": "RestaurentService"
+      "ServiceName": "CartService"
     }

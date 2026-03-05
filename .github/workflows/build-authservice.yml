@@ -1,0 +1,23 @@
+name: Build and Push Auth Service
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '40 0 * * *'
+  push:
+    branches:
+      - main
+      - feature/pipeline-init 
+
+jobs:
+  build-and-push:
+    uses: ./.github/workflows/build-service-reusable.yml
+    secrets: inherit
+    with:
+      service_display_name: Auth Service
+      source_ref: feature/migration
+      project_path: src/services/AuthService/AuthService.API/AuthService.API.csproj
+      service_folder: AuthService
+      dll_name: AuthService.API.dll
+      dockerfile_name: authservice
+      image_tag: ghcr.io/prakashrajansakthivel/authservice:latest

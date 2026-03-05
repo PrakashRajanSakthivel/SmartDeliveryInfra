@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: restaurent-service-hpa
+  name: payment-service-hpa
   namespace: smartdelivery
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: restaurent-service
+    name: payment-service
   minReplicas: 1
   maxReplicas: 5
   metrics:

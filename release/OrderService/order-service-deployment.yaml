@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: restaurent-service
+  name: order-service
   namespace: smartdelivery
   labels:
-    app: restaurent-service
+    app: order-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: restaurent-service
+      app: order-service
   template:
     metadata:
       labels:
-        app: restaurent-service
+        app: order-service
     spec:
       imagePullSecrets:
       - name: ghcr-pull-secret
       containers:
-      - name: restaurent-service
-        image: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest
+      - name: order-service
+        image: ghcr.io/prakashrajansakthivel/orderservice:latest
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         resources:
           requests:
             memory: "128Mi"
@@ -36,4 +36,4 @@ spec:
       volumes:
       - name: config-volume
         configMap:
-          name: restaurent-service-config
+          name: order-service-config

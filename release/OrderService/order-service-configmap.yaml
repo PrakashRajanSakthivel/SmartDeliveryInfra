@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: restaurent-service-config
+  name: order-service-config
   namespace: smartdelivery
 data:
   appsettings.json: |
@@ -14,7 +14,7 @@ data:
       },
       "AllowedHosts": "*",
       "ConnectionStrings": {
-        "RestaurantDatabase": "__RESTAURANT_DB_CONNECTION__"
+        "OrderDatabase": "__ORDER_DB_CONNECTION__"
       },
       "Jwt": {
         "Issuer": "SmartOrderSystem",
@@ -25,6 +25,9 @@ data:
         "Uri": "http://elasticsearch-service:9200",
         "Username": "elastic",
         "Password": "yourpassword"
+      },
+      "RestaurantService": {
+        "BaseUrl": "http://restaurent-service:8080"
       },
       "Serilog": {
         "Using": [ "Serilog.Sinks.Console", "Serilog.Sinks.Elasticsearch" ],
@@ -44,7 +47,7 @@ data:
             "Name": "Elasticsearch",
             "Args": {
               "nodeUris": "http://elasticsearch-service:9200",
-              "indexFormat": "restaurantservice-logs-{0:yyyy.MM}",
+              "indexFormat": "orderservice-logs-{0:yyyy.MM}",
               "autoRegisterTemplate": true,
               "batchPostingLimit": 10,
               "period": 2,
@@ -57,9 +60,9 @@ data:
         ],
         "Enrich": [ "FromLogContext", "WithMachineName", "WithProcessId" ],
         "Properties": {
-          "Application": "RestaurentService",
+          "Application": "OrderService",
           "Environment": "Production"
         }
       },
-      "ServiceName": "RestaurentService"
+      "ServiceName": "OrderService"
     }
