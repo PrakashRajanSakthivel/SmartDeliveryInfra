@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
     with:
       service_display_name: Restaurant Service
-      source_ref: feature/buildfix
+      source_ref: feature/migration
       project_path: src/services/RestaurantService/Restaurant.API/RestaurantService.API.csproj
       service_folder: RestaurantService
       dll_name: RestaurantService.API.dll

@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
     with:
       service_display_name: Order Service
-      source_ref: feature/buildfix
+      source_ref: feature/migration
       project_path: src/services/OrderService/OrderService.API/OrderService.API.csproj
       service_folder: OrderService
       dll_name: OrderService.API.dll

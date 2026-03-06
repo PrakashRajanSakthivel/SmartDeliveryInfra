@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
     with:
       service_display_name: Payment Service
-      source_ref: feature/buildfix
+      source_ref: feature/migration
       project_path: src/services/PaymentService/PaymentService.API/PaymentService.API.csproj
       service_folder: PaymentService
       dll_name: PaymentService.API.dll

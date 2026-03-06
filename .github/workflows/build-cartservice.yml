@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
     with:
       service_display_name: Cart Service
-      source_ref: feature/buildfix
+      source_ref: feature/migration
       project_path: src/services/CartService/CartService.API/CartService.API.csproj
       service_folder: CartService
       dll_name: CartService.API.dll
