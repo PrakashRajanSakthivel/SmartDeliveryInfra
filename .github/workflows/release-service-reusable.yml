@@ -113,15 +113,15 @@ jobs:
         run: |
           if [ "${{ inputs.trigger_source }}" = "workflow_run" ] && [ "${{ inputs.workflow_run_id }}" != "" ]; then
             echo "build_number=${{ inputs.workflow_run_number }}" >> $GITHUB_OUTPUT
-            echo "image_tag=v${{ inputs.workflow_run_number }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ inputs.workflow_run_id }}" >> $GITHUB_OUTPUT
             echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
             echo "build_date=${{ inputs.workflow_run_created_at }}" >> $GITHUB_OUTPUT
             echo "commit_sha=${{ inputs.workflow_run_head_sha }}" >> $GITHUB_OUTPUT
             echo "branch=${{ inputs.workflow_run_head_branch }}" >> $GITHUB_OUTPUT
-            echo "✅ Using build from workflow run #${{ inputs.workflow_run_number }}"
+            echo "✅ Using build from workflow run #${{ inputs.workflow_run_number }} (image tag: ${{ inputs.workflow_run_id }})"
           elif [ "${{ inputs.build_run_id }}" != "" ]; then
             echo "build_number=${{ inputs.build_run_id }}" >> $GITHUB_OUTPUT
-            echo "image_tag=v${{ inputs.build_run_id }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ inputs.build_run_id }}" >> $GITHUB_OUTPUT
             echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
             echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
             echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT

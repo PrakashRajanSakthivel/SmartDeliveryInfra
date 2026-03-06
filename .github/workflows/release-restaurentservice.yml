@@ -47,7 +47,7 @@ jobs:
     secrets: inherit
     with:
       service_display_name: Restaurant Service
-      image_name: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice
+      image_name: ghcr.io/prakashrajansakthivel/restaurentservice
       deployment_name: restaurent-service
       app_label: restaurent-service
       configmap_mode: restaurant
