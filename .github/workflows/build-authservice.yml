@@ -20,4 +20,4 @@ jobs:
       service_folder: AuthService
       dll_name: AuthService.API.dll
       dockerfile_name: authservice
-      image_tag: ghcr.io/prakashrajansakthivel/authservice:latest
+      image_tag: ghcr.io/${{ github.repository_owner }}/authservice:${{ github.run_id }}

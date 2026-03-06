@@ -20,4 +20,4 @@ jobs:
       service_folder: PaymentService
       dll_name: PaymentService.API.dll
       dockerfile_name: paymentservice
-      image_tag: ghcr.io/prakashrajansakthivel/paymentservice:latest
+      image_tag: ghcr.io/prakashrajansakthivel/paymentservice:${{ github.run_id }}

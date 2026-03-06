@@ -20,4 +20,4 @@ jobs:
       service_folder: CartService
       dll_name: CartService.API.dll
       dockerfile_name: cartservice
-      image_tag: ghcr.io/prakashrajansakthivel/cartservice:latest
+      image_tag: ghcr.io/prakashrajansakthivel/cartservice:${{ github.run_id }}

@@ -20,4 +20,4 @@ jobs:
       service_folder: OrderService
       dll_name: OrderService.API.dll
       dockerfile_name: orderservice
-      image_tag: ghcr.io/prakashrajansakthivel/orderservice:latest
+      image_tag: ghcr.io/prakashrajansakthivel/orderservice:${{ github.run_id }}

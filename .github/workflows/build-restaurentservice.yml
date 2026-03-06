@@ -20,5 +20,5 @@ jobs:
       service_folder: RestaurantService
       dll_name: RestaurantService.API.dll
       dockerfile_name: restaurentservice
-      image_tag: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest
+      image_tag: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:${{ github.run_id }}
       remove_default_appsettings: true
