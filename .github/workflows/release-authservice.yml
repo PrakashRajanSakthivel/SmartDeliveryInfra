@@ -58,6 +58,8 @@ jobs:
       service_manifest: release/AuthService/auth-service-service.yaml
       hpa_manifest: release/AuthService/auth-service-hpa.yaml
       namespace_manifest: release/namespace.yaml
+      enable_virtualservice: true
+      virtualservice_manifest: release/RestaurentService/smartdelivery-virtualservice.yaml
       environment: ${{ github.event.inputs.environment || 'production' }}
       build_run_id: ${{ github.event.inputs.build_run_id || '' }}
       trigger_source: ${{ github.event_name }}

@@ -19,7 +19,7 @@ spec:
     - destination:
         host: restaurent-service.smartdelivery.svc.cluster.local
         port:
-          number: 80
+          number: 8080
 
   # Route for OrderService (You will create this later)
   - match:
@@ -31,7 +31,7 @@ spec:
     - destination:
         host: order-service.smartdelivery.svc.cluster.local # Placeholder for your next service
         port:
-          number: 80
+          number: 8080
 
   # Route for PaymentService
   - match:
@@ -43,7 +43,7 @@ spec:
     - destination:
         host: payment-service.smartdelivery.svc.cluster.local
         port:
-          number: 80
+          number: 8080
 
   # Route for CartService
   - match:
@@ -55,7 +55,7 @@ spec:
     - destination:
         host: cart-service.smartdelivery.svc.cluster.local
         port:
-          number: 80
+          number: 8080
 
   # Route for AuthService
   - match:
@@ -67,7 +67,7 @@ spec:
     - destination:
         host: auth-service.smartdelivery.svc.cluster.local
         port:
-          number: 80
+          number: 8080
 
   # Optional: Default route if someone goes to just the domain
   - match:
@@ -77,4 +77,4 @@ spec:
     - destination:
         host: restaurent-service.smartdelivery.svc.cluster.local # or a dedicated frontend service
         port:
-          number: 80
+          number: 8080

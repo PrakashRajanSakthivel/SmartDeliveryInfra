@@ -13,7 +13,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "example.local" # The hostname from your Windows hosts file
+    - "api.smartdelivery.local"
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
