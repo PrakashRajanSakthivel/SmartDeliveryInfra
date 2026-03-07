@@ -19,7 +19,7 @@ data:
         "SecretKey": "VerySecretKeyForSigningTokens123!"
       },
       "Elasticsearch": {
-        "Uri": "http://elasticsearch-service:9200",
+        "Uri": "http://elasticsearch.logging.svc.cluster.local:9200",
         "Username": "elastic",
         "Password": "yourpassword"
       },
@@ -40,7 +40,7 @@ data:
           {
             "Name": "Elasticsearch",
             "Args": {
-              "nodeUris": "http://elasticsearch-service:9200",
+              "nodeUris": "http://elasticsearch.logging.svc.cluster.local:9200",
               "indexFormat": "paymentservice-logs-{0:yyyy.MM}",
               "autoRegisterTemplate": true,
               "batchPostingLimit": 10,
