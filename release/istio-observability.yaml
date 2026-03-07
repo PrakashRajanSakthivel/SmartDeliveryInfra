@@ -1,0 +1,152 @@
+# =======================================================================
+# istio-observability.yaml
+# Apply:   kubectl apply -f release/istio-observability.yaml
+# After:   kubectl rollout restart deployment/kiali -n istio-system
+# =======================================================================
+
+# -----------------------------------------------------------------------
+# 1. Telemetry — enforce 100 % trace sampling for smartdelivery namespace.
+#    Provider name "jaeger" matches extensionProviders in the istio ConfigMap.
+#    Uses OTLP → jaeger-collector.istio-system:4317.
+# -----------------------------------------------------------------------
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: smartdelivery-tracing
+  namespace: smartdelivery
+spec:
+  tracing:
+  - providers:
+    - name: jaeger
+    randomSamplingPercentage: 100.0
+---
+# -----------------------------------------------------------------------
+# 2. Kiali ConfigMap — full config; only change from the installed default
+#    is external_services.tracing: enabled true + Jaeger query URL.
+#    Kiali version: v2.5.0  (helm.sh/chart=kiali-server-2.5.0)
+# -----------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kiali
+  namespace: istio-system
+  labels:
+    app: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/part-of: kiali
+    app.kubernetes.io/version: v2.5.0
+    helm.sh/chart: kiali-server-2.5.0
+    version: v2.5.0
+data:
+  config.yaml: |
+    additional_display_details:
+    - annotation: kiali.io/api-spec
+      icon_annotation: kiali.io/api-type
+      title: API Documentation
+    auth:
+      openid: {}
+      openshift:
+        client_id_prefix: kiali
+      strategy: anonymous
+    clustering:
+      autodetect_secrets:
+        enabled: true
+        label: kiali.io/multiCluster=true
+      clusters: []
+    deployment:
+      additional_service_yaml: {}
+      affinity:
+        node: {}
+        pod: {}
+        pod_anti: {}
+      cluster_wide_access: true
+      configmap_annotations: {}
+      custom_envs: []
+      custom_secrets: []
+      dns:
+        config: {}
+        policy: ""
+      host_aliases: []
+      hpa:
+        api_version: autoscaling/v2
+        spec: {}
+      image_digest: ""
+      image_name: quay.io/kiali/kiali
+      image_pull_policy: IfNotPresent
+      image_pull_secrets: []
+      image_version: v2.5
+      ingress:
+        additional_labels: {}
+        class_name: nginx
+        override_yaml:
+          metadata: {}
+      ingress_enabled: false
+      instance_name: kiali
+      logger:
+        log_format: text
+        log_level: info
+        sampler_rate: "1"
+        time_field_format: 2006-01-02T15:04:05Z07:00
+      namespace: istio-system
+      node_selector: {}
+      pod_annotations: {}
+      pod_labels:
+        sidecar.istio.io/inject: "false"
+      priority_class_name: ""
+      probes:
+        liveness:
+          initial_delay_seconds: 5
+          period_seconds: 30
+        readiness:
+          initial_delay_seconds: 5
+          period_seconds: 30
+        startup:
+          failure_threshold: 6
+          initial_delay_seconds: 30
+          period_seconds: 10
+      remote_cluster_resources_only: false
+      replicas: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          cpu: 10m
+          memory: 64Mi
+      secret_name: kiali
+      security_context: {}
+      service_annotations: {}
+      service_type: ""
+      tolerations: []
+      topology_spread_constraints: []
+      version_label: v2.5.0
+      view_only_mode: false
+    external_services:
+      custom_dashboards:
+        enabled: true
+      istio:
+        root_namespace: istio-system
+      # --- CHANGED: was enabled: false ---
+      tracing:
+        enabled: true
+        in_cluster_url: "http://tracing.istio-system:16686"
+        provider: "jaeger"
+        use_grpc: false
+    identity:
+      cert_file: ""
+      private_key_file: ""
+    istio_namespace: istio-system
+    kiali_feature_flags:
+      disabled_features: []
+      validations:
+        ignore:
+        - KIA1301
+    login_token:
+      signing_key: CHANGEME00000000
+    server:
+      observability:
+        metrics:
+          enabled: true
+          port: 9090
+      port: 20001
+      web_root: /kiali

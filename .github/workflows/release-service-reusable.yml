@@ -193,7 +193,7 @@ jobs:
           fi
 
           if [ "${{ inputs.configmap_mode }}" = "restaurant" ]; then
-            sed -i 's|PLACEHOLDER_DB_CONNECTION_STRING|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
+            sed -i 's|__RESTAURANT_DB_CONNECTION__|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
             sed -i 's|PLACEHOLDER_JWT_SECRET_KEY|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
 
             if [ -n "${{ secrets.JWT_ISSUER }}" ]; then

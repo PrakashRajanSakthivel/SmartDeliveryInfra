@@ -1,4 +1,14 @@
-# ARM-optimized resource limits
+# -----------------------------------------------------------------------
+# istiod Helm values — SmartDelivery (k3s single-node, resource-constrained)
+# Chart  : istio/istiod  version 1.25.2
+# Node   : 4 vCPU / 7.5 GiB  (sd-master)
+# Managed: helm upgrade istiod istio/istiod -n istio-system -f Smart/istiod-values.yaml
+#
+# WARNING: these values reflect the LIVE cluster config.
+#          Do not change extensionProviders without also updating
+#          any Telemetry resources that reference provider names.
+# -----------------------------------------------------------------------
+
 resources:
   requests:
     cpu: 250m
@@ -7,18 +17,39 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-# Minimal configuration
 meshConfig:
+  # Emit Envoy access logs to stdout (visible via kubectl logs)
   accessLogFile: /dev/stdout
-  defaultConfig:
-    concurrency: 1
 
-# Disable unnecessary features
+  # Merge Prometheus metrics from app + Envoy into a single scrape endpoint
+  enablePrometheusMerge: true
+
+  # Global default: every sidecar sends 100 % of traces to Jaeger.
+  # Override per-namespace with a Telemetry resource (release/istio-observability.yaml).
+  defaultConfig:
+    tracing:
+      sampling: 100
+
+  # Default providers applied mesh-wide unless overridden by a Telemetry resource
+  defaultProviders:
+    metrics:
+    - prometheus
+    tracing:
+    - jaeger
+
+  # Named extension providers referenced by Telemetry resources
+  extensionProviders:
+  - name: jaeger
+    opentelemetry:
+      port: 4317
+      service: jaeger-collector.istio-system.svc.cluster.local
+
 global:
   proxy:
     autoInject: enabled
   logAsJson: false
 
-# ARM-compatible image settings
-hub: docker.io/istio
-tag: 1.22.0
+# Single-replica — no autoscaling needed for this showcase cluster
+pilot:
+  autoscaleEnabled: false
+  replicaCount: 1
