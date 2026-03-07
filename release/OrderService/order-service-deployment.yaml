@@ -14,6 +14,7 @@ spec:
     metadata:
       labels:
         app: order-service
+        version: v1
     spec:
       imagePullSecrets:
       - name: ghcr-pull-secret

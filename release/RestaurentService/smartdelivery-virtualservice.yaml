@@ -12,31 +12,31 @@ spec:
   # Route for RestaurentService
   - match:
     - uri:
-        prefix: /restaurentservice
+        prefix: /restaurentservice/
     rewrite:
-      uri: / # Rewrites /restaurentservice/api/foo to /api/foo
+      uri: /
     route:
     - destination:
         host: restaurent-service.smartdelivery.svc.cluster.local
         port:
           number: 8080
 
-  # Route for OrderService (You will create this later)
+  # Route for OrderService
   - match:
     - uri:
-        prefix: /orderservice
+        prefix: /orderservice/
     rewrite:
       uri: /
     route:
     - destination:
-        host: order-service.smartdelivery.svc.cluster.local # Placeholder for your next service
+        host: order-service.smartdelivery.svc.cluster.local
         port:
           number: 8080
 
   # Route for PaymentService
   - match:
     - uri:
-        prefix: /paymentservice
+        prefix: /paymentservice/
     rewrite:
       uri: /
     route:
@@ -48,7 +48,7 @@ spec:
   # Route for CartService
   - match:
     - uri:
-        prefix: /cartservice
+        prefix: /cartservice/
     rewrite:
       uri: /
     route:
@@ -60,7 +60,7 @@ spec:
   # Route for AuthService
   - match:
     - uri:
-        prefix: /authservice
+        prefix: /authservice/
     rewrite:
       uri: /
     route:
