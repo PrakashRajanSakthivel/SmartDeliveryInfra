@@ -5,7 +5,7 @@ metadata:
   namespace: smartdelivery
 spec:
   hosts:
-  - "api.smartdelivery.local"
+  - "smartdeliveryapi.rajanlabs.com"
   gateways:
   - istio-system/istio-public-gateway
   http:

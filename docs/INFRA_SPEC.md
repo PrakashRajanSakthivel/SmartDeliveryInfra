@@ -47,13 +47,11 @@ This is a showcase project. No HA, no autoscaling beyond HPA (defined but not ex
 | `smartdelivery` | All five application services | ✅ enabled |
 | `istio-system` | Istio control plane + all addons (Jaeger, Kiali, Prometheus, Grafana) | ❌ (system) |
 | `logging` | Elasticsearch + Kibana | ❌ |
-| `monitoring` | Prometheus stack + Grafana (separate Helm install) | ❌ |
+| `kube-system` | Headlamp cluster dashboard | ❌ |
 | `cert-manager` | TLS certificate management | ❌ |
 | `default` | Contains a mesh-wide `Telemetry` resource only | ✅ enabled |
 
-> **Note:** `monitoring` and `istio-system` both run independent Prometheus and Grafana instances.
-> This is intentional for now — `monitoring` serves cluster-level metrics; `istio-system` serves
-> mesh metrics consumed by Kiali. They will be consolidated once all services are validated.
+> **Note:** The `monitoring` namespace (separate Prometheus + Grafana Helm install) was removed on 2026-03-07 to reclaim ~546 MiB RAM. Cluster-level dashboards are now served by **Headlamp** (NodePort 30900, ~80 MiB) and optionally **Lens** (desktop app, zero cluster footprint).
 
 ---
 
@@ -72,8 +70,7 @@ This is a showcase project. No HA, no autoscaling beyond HPA (defined but not ex
 | `istio-system` | jaeger | 12m | 41 MiB |
 | `logging` | elasticsearch | 10m | **1167 MiB** |
 | `logging` | kibana | 55m | 567 MiB |
-| `monitoring` | prometheus-server | 3m | 386 MiB |
-| `monitoring` | grafana | 5m | 160 MiB |
+| `kube-system` | headlamp | ~5m | ~80 MiB |
 | `smartdelivery` | 5 services × ~80 MiB | ~26m | ~432 MiB |
 | `smartdelivery` | 5 Envoy sidecars × ~33 MiB | ~15m | ~165 MiB |
 | **Node total** | | **394m (9%)** | **5427 MiB (70%)** |
@@ -230,16 +227,25 @@ Kiali reads from:
 
 ✅ `external_services.tracing.enabled: true` is verified in live `ConfigMap/kiali`.
 
-### 5.4 Metrics — Prometheus + Grafana
+### 5.4 Cluster Dashboard — Headlamp
 
-Two stacks run in parallel (intentional for now):
+| Component | Namespace | Access |
+|-----------|-----------|--------|
+| Headlamp | `kube-system` | `http://46.62.150.44:30900` (NodePort) |
+| Lens (desktop) | n/a — local machine | via kubeconfig, zero cluster footprint |
 
-| Stack | Namespace | Scrapes |
-|-------|-----------|---------|
-| `istio/prometheus` | `istio-system` | Envoy sidecar metrics (used by Kiali) |
-| `prometheus` Helm chart | `monitoring` | Node + kube-state metrics |
+The `monitoring` namespace (separate Prometheus + Grafana) was **removed on 2026-03-07** (~546 MiB reclaimed).
 
-Grafana in both namespaces is accessible via `kubectl port-forward svc/grafana 3000`.
+- **Headlamp** provides coloured per-pod CPU/memory panels, namespace overviews, and log tailing directly from the browser (~80 MiB in-cluster).
+- **Lens** (install on Windows separately) offers full-featured CPU/memory graphs per pod with zero cluster resource cost.
+- Envoy sidecar metrics are still scraped by the `istio-system` Prometheus (required by Kiali — untouched).
+
+```bash
+# Install Headlamp
+helm repo add headlamp https://headlamp-k8s.github.io/headlamp/
+helm repo update
+helm install headlamp headlamp/headlamp -n kube-system -f Smart/headlamp-values.yaml
+```
 
 ---
 
@@ -265,15 +271,64 @@ All services:
 
 ## 7. Traffic Routing
 
-### Ingress path
+### Current ingress path (as of 2026-03-09)
 
 ```
-Client
-  → http://46.62.150.44:30774          NodePort → istio-ingressgateway
-  → Gateway: istio-public-gateway       matches Host: api.smartdelivery.local
-  → VirtualService: smartdelivery-vs    prefix-routes to each service
-  → ClusterIP service                   port 8080
+Browser / API Client (HTTPS)
+  → Cloudflare Edge (SSL termination, Flexible mode)
+  → HTTP port 80 → 46.62.150.44
+  → svclb-istio-ingressgateway (hostPort 80 → pod port 80)
+  → Istio IngressGateway (Envoy)
+  → Gateway: istio-public-gateway   matches Host: smartdeliveryapi.rajanlabs.com
+  → VirtualService: smartdelivery-vs prefix-routes + URI rewrite
+  → ClusterIP service port 8080
   → Envoy sidecar → .NET container
+```
+
+### Why Traefik is disabled
+
+k3s bundles **Traefik** as its default ingress controller and deploys a `ServiceLB` (svclb) DaemonSet pod that claims `hostPort: 80` and `hostPort: 443` on the node. The k3s CNI installs nftables DNAT rules routing all inbound port 80 traffic to the Traefik svclb pod — before nginx or Istio IngressGateway can receive it.
+
+Since this project uses **Istio as the sole ingress controller**, Traefik is redundant and conflicting. It was disabled by patching its service to `ClusterIP`, which removes the svclb pod and frees the hostPort:
+
+```bash
+kubectl patch svc traefik -n kube-system -p '{"spec": {"type": "ClusterIP"}}'
+```
+
+With Traefik's DNAT rule gone, `svclb-istio-ingressgateway` takes ownership of `hostPort: 80`, and all external port 80 traffic reaches Istio directly.
+
+### Full request flow — Browser to OrderService
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser / Postman
+    participant CF as Cloudflare Edge
+    participant NIC as VPS NIC (46.62.150.44:80)
+    participant SVCLB as svclb-istio-ingressgateway<br/>(hostPort 80)
+    participant IG as Istio IngressGateway (Envoy)
+    participant VS as VirtualService<br/>smartdelivery-vs
+    participant OE as OrderService Envoy Sidecar
+    participant O as OrderService (.NET)
+    participant RE as RestaurantService Envoy Sidecar
+    participant R as RestaurantService (.NET)
+
+    B->>CF: HTTPS GET /orderservice/api/diagnostics/chain
+    Note over CF: Terminates TLS (Flexible SSL mode)
+    CF->>NIC: HTTP GET :80 /orderservice/api/diagnostics/chain
+    NIC->>SVCLB: nftables forwards hostPort 80
+    SVCLB->>IG: port 8080 inside pod
+    IG->>VS: Matches host smartdeliveryapi.rajanlabs.com
+    VS->>OE: prefix /orderservice → order-service:8080<br/>URI rewrite strips /orderservice prefix
+    OE->>O: /api/diagnostics/chain
+    O->>RE: HTTP GET restaurent-service:8080/api/diagnostics/ping
+    RE->>R: /api/diagnostics/ping
+    R-->>RE: 200 OK {service: RestaurantService}
+    RE-->>O: 200 OK
+    O-->>OE: 200 OK {OrderService + downstream}
+    OE-->>IG: 200 OK
+    IG-->>CF: 200 OK
+    CF-->>B: 200 OK (HTTPS)
 ```
 
 ### Gateway resource
@@ -304,22 +359,25 @@ Defined in `istio-gateway-config.yaml`, applied in `istio-system`. **Already exi
 ### Testing from outside the cluster
 
 ```bash
-# Replace Host header with api.smartdelivery.local (no DNS needed)
-curl -H "Host: api.smartdelivery.local" \
-     http://46.62.150.44:30774/authservice/api/auth/login \
-     -d '{"username":"testuser","password":"password"}' \
-     -H "Content-Type: application/json"
+# Public URL (Cloudflare HTTPS — preferred)
+curl https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
+
+# Direct NodePort (bypasses Cloudflare, bypasses nginx)
+curl -H "Host: smartdeliveryapi.rajanlabs.com" \
+     http://46.62.150.44:30774/orderservice/api/diagnostics/chain
+
+# From inside VPS (bypasses Cloudflare)
+curl -H "Host: smartdeliveryapi.rajanlabs.com" http://localhost/orderservice/api/diagnostics/chain
 ```
 
 ### Diagnostics chain check (for propagation)
 
 ```bash
-# Through ingress (includes gateway + service sidecar spans)
-curl -H "Host: api.smartdelivery.local" \
-     -H "X-Correlation-ID: diag-test-001" \
-     http://46.62.150.44:30774/orderservice/api/diagnostics/chain
+# Full public path (Cloudflare → Istio → OrderService → RestaurantService)
+curl -H "X-Correlation-ID: diag-test-001" \
+     https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
 
-# Direct service port-forward (app-level correlation check only)
+# Direct service port-forward (app-level check only, no Istio spans)
 curl -H "X-Correlation-ID: diag-test-001" \
      http://localhost:8080/api/diagnostics/chain
 ```
@@ -380,8 +438,11 @@ kubectl port-forward svc/kiali 20001:20001 -n istio-system
 # Jaeger trace UI
 kubectl port-forward svc/tracing 16686:16686 -n istio-system
 
-# Grafana (istio metrics)
+# Grafana (istio metrics — still available if needed)
 kubectl port-forward svc/grafana 3000:3000 -n istio-system
+
+# Headlamp cluster dashboard
+# Already NodePort — http://46.62.150.44:30900
 
 # Kibana (logs)
 # Already NodePort — http://46.62.150.44:30601
@@ -395,7 +456,7 @@ kubectl port-forward svc/grafana 3000:3000 -n istio-system
 |---|-----------|--------|--------------------------|
 | 1 | **Single node** — no HA, no node failover | Any restart = full downtime | ✅ Yes |
 | 2 | **Jaeger uses emptyDir** — traces lost on pod restart | Trace history disappears after Jaeger restarts | ✅ Yes |
-| 3 | **Duplicate Prometheus + Grafana** (`istio-system` and `monitoring`) | ~550 MiB wasted RAM | ✅ Yes (consolidate later) |
+| 3 | **`monitoring` namespace removed** — no cluster-native metrics scraping beyond Kiali's Prometheus | Use Headlamp (NodePort 30900) or Lens desktop for pod/CPU dashboards | ✅ Resolved 2026-03-07 |
 | 4 | **EXTERNAL-IP `<pending>`** on IngressGateway LoadBalancer | Use NodePort 30774 instead | ✅ Yes |
 | 5 | **mTLS permissive mode** — no `PeerAuthentication` | Service-to-service traffic not enforced encrypted | ✅ Yes |
 | 6 | **No Ingress DNS** — must use `Host:` header or `/etc/hosts` | Extra step for manual testing | ✅ Yes |
