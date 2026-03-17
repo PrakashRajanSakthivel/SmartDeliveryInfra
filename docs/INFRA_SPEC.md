@@ -1,7 +1,7 @@
 # SmartDelivery — Infrastructure Specification
 
 > **Purpose:** Skill-showcase project. End-to-end microservices platform on a single self-hosted node.
-> **Last verified:** 2025-08 | **Istio:** 1.25.2 | **k3s:** v1.33.3
+> **Last verified:** 2026-03-17 | **Istio:** 1.25.2 | **k3s:** v1.33.3
 
 ---
 
@@ -177,7 +177,7 @@ Acceptable for showcase. For persistence, mount a PVC or switch to an external b
 **Telemetry resource** (`release/istio-observability.yaml`) sets 100 % sampling for the
 `smartdelivery` namespace explicitly, overriding the mesh-wide default if needed.
 
-### 5.2.1 Verification snapshot (2026-03-07)
+### 5.2.1 Verification snapshot (2026-03-17)
 
 Validated from live cluster using `kubectl get/describe` and runtime checks:
 
@@ -185,6 +185,7 @@ Validated from live cluster using `kubectl get/describe` and runtime checks:
 - Jaeger API is reachable and lists mesh services (`order-service.smartdelivery`, `restaurent-service.smartdelivery`, `istio-ingressgateway.istio-system`).
 - Kiali API is reachable and reports Jaeger as connected external service.
 - Kiali graph shows `order-service -> restaurent-service` traffic edge with HTTP `200` responses.
+- ✅ **2026-03-17:** `https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain` returns `200 OK` over Cloudflare Full Strict HTTPS (no port number). TLS terminated at Istio IngressGateway using Cloudflare Origin Certificate (`smartdeliveryapi-tls` secret in `istio-system`).
 
 **Quick sequence (request + propagation path):**
 
@@ -271,19 +272,39 @@ All services:
 
 ## 7. Traffic Routing
 
-### Current ingress path (as of 2026-03-09)
+### Current ingress path (as of 2026-03-17)
 
 ```
 Browser / API Client (HTTPS)
-  → Cloudflare Edge (SSL termination, Flexible mode)
-  → HTTP port 80 → 46.62.150.44
-  → svclb-istio-ingressgateway (hostPort 80 → pod port 80)
-  → Istio IngressGateway (Envoy)
-  → Gateway: istio-public-gateway   matches Host: smartdeliveryapi.rajanlabs.com
+  → Cloudflare Edge (Full Strict SSL — CF Origin Cert at origin)
+  → HTTPS port 443 → 46.62.150.44
+  → svclb-istio-ingressgateway (hostPort 443 → pod port 443)
+  → Istio IngressGateway (Envoy) — TLS termination with smartdeliveryapi-tls secret
+  → Gateway: istio-public-gateway   matches Host: smartdeliveryapi.rajanlabs.com (HTTPS server)
   → VirtualService: smartdelivery-vs prefix-routes + URI rewrite
   → ClusterIP service port 8080
   → Envoy sidecar → .NET container
 ```
+
+> Port 80 remains active (passes through svclb hostPort 80 → Istio Gateway HTTP server) for
+> direct NodePort testing and Cloudflare health probes. The VirtualService is unchanged.
+
+#### TLS certificate setup (one-time)
+
+| Step | Action |
+|------|--------|
+| 1 | In Cloudflare dashboard: SSL/TLS → Origin Server → Create Certificate. Hostnames: `*.rajanlabs.com`, `rajanlabs.com`. Validity: 15 years. Download `origin-cert.pem` and `origin-key.pem`. |
+| 2 | Copy both files to the VPS (e.g. pipe over SSH: `Get-Content origin-cert.pem -Raw \| ssh root@46.62.150.44 "cat > /home/user/origin-cert.pem"`), then: |
+| | `kubectl create secret tls smartdeliveryapi-tls --cert=/home/theoneplusbot/origin-cert.pem --key=/home/theoneplusbot/origin-key.pem -n istio-system` |
+| | ⚠️ Use the **absolute path** — `~` expands to `/root/` when running as root, but files land in the SSH user's home dir. |
+| 3 | `kubectl apply -f istio-gateway-config.yaml` |
+| 4 | `kubectl get gateways.networking.istio.io -n istio-system -o yaml` — verify both HTTP and HTTPS servers appear |
+| 5 | In Cloudflare: SSL/TLS → Overview → set mode **Full (strict)**. Enable orange-cloud proxy on the DNS A record. |
+
+> **Why Cloudflare Origin Certificate, not Let's Encrypt?**
+> CF Origin Certs are trusted by Cloudflare for Full Strict, last 15 years, and require no renewal
+> automation. Let's Encrypt HTTP-01 can work through CF proxy, but adds cert-manager DNS-01
+> configuration complexity that isn't warranted here. The Origin Cert is the standard CF-native solution.
 
 ### Why Traefik is disabled
 
@@ -304,8 +325,8 @@ sequenceDiagram
     autonumber
     participant B as Browser / Postman
     participant CF as Cloudflare Edge
-    participant NIC as VPS NIC (46.62.150.44:80)
-    participant SVCLB as svclb-istio-ingressgateway<br/>(hostPort 80)
+    participant NIC as VPS NIC (46.62.150.44:443)
+    participant SVCLB as svclb-istio-ingressgateway<br/>(hostPort 443)
     participant IG as Istio IngressGateway (Envoy)
     participant VS as VirtualService<br/>smartdelivery-vs
     participant OE as OrderService Envoy Sidecar
@@ -314,10 +335,10 @@ sequenceDiagram
     participant R as RestaurantService (.NET)
 
     B->>CF: HTTPS GET /orderservice/api/diagnostics/chain
-    Note over CF: Terminates TLS (Flexible SSL mode)
-    CF->>NIC: HTTP GET :80 /orderservice/api/diagnostics/chain
-    NIC->>SVCLB: nftables forwards hostPort 80
-    SVCLB->>IG: port 8080 inside pod
+    Note over CF: Full Strict — CF Origin Cert verified
+    CF->>NIC: HTTPS GET :443 /orderservice/api/diagnostics/chain
+    NIC->>SVCLB: nftables forwards hostPort 443
+    SVCLB->>IG: port 8443 inside pod (TLS terminated by Envoy)
     IG->>VS: Matches host smartdeliveryapi.rajanlabs.com
     VS->>OE: prefix /orderservice → order-service:8080<br/>URI rewrite strips /orderservice prefix
     OE->>O: /api/diagnostics/chain
@@ -333,7 +354,7 @@ sequenceDiagram
 
 ### Gateway resource
 
-Defined in `istio-gateway-config.yaml`, applied in `istio-system`. **Already exists in the cluster (192d old).**
+Defined in `istio-gateway-config.yaml`, applied in `istio-system`. Has **two servers**: HTTP on port 80 and HTTPS on port 443 (TLS SIMPLE, `credentialName: smartdeliveryapi-tls`).
 
 > ⚠️ **k3s CRD ambiguity:** k3s ships both the Kubernetes Gateway API (`gateway.networking.k8s.io/v1`)
 > and Istio's Gateway CRD (`networking.istio.io/v1`). The shorthand `kubectl get gateway -A` resolves
@@ -359,15 +380,19 @@ Defined in `istio-gateway-config.yaml`, applied in `istio-system`. **Already exi
 ### Testing from outside the cluster
 
 ```bash
-# Public URL (Cloudflare HTTPS — preferred)
+# Public URL (Cloudflare HTTPS Full Strict — preferred)
 curl https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
 
-# Direct NodePort (bypasses Cloudflare, bypasses nginx)
+# Direct NodePort HTTP (bypasses Cloudflare, bypasses TLS — for local diagnostics)
 curl -H "Host: smartdeliveryapi.rajanlabs.com" \
      http://46.62.150.44:30774/orderservice/api/diagnostics/chain
 
-# From inside VPS (bypasses Cloudflare)
+# From inside VPS on HTTP (bypasses Cloudflare — svclb hostPort 80)
 curl -H "Host: smartdeliveryapi.rajanlabs.com" http://localhost/orderservice/api/diagnostics/chain
+
+# Verify TLS cert without Cloudflare proxy (set DNS to grey-cloud temporarily)
+curl -v --resolve smartdeliveryapi.rajanlabs.com:443:46.62.150.44 \
+     https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
 ```
 
 ### Diagnostics chain check (for propagation)

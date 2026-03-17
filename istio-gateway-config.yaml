@@ -10,6 +10,13 @@
 #
 #   kubectl get gateways.networking.istio.io -A
 #
+# TLS Secret — must exist in istio-system BEFORE applying the HTTPS server block.
+# Create it from a Cloudflare Origin Certificate (see docs/INFRA_SPEC.md §7):
+#
+#   kubectl create secret tls smartdeliveryapi-tls \
+#     --cert=origin-cert.pem --key=origin-key.pem \
+#     -n istio-system
+#
 # Apply:  kubectl apply -f istio-gateway-config.yaml
 # =======================================================================
 apiVersion: networking.istio.io/v1beta1
@@ -21,9 +28,22 @@ spec:
   selector:
     istio: ingressgateway
   servers:
+  # --- HTTP (keep for health probes and direct NodePort testing) ---
   - port:
       number: 80
       name: http
       protocol: HTTP
     hosts:
     - "smartdeliveryapi.rajanlabs.com"
+  # --- HTTPS (Cloudflare Full Strict — requires smartdeliveryapi-tls secret) ---
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "smartdeliveryapi.rajanlabs.com"
+    tls:
+      mode: SIMPLE
+      credentialName: smartdeliveryapi-tls
+
+      
