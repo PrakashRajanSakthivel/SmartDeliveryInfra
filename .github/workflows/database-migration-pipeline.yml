@@ -7,6 +7,18 @@ on:
         description: 'SmartDelivery branch/tag to use'
         required: true
         default: 'feature/pipeline-init'
+      migrate_restaurant:
+        description: 'Run Restaurant DB migration'
+        type: boolean
+        default: true
+      migrate_order:
+        description: 'Run Order DB migration'
+        type: boolean
+        default: true
+      migrate_cart:
+        description: 'Run Cart DB migration'
+        type: boolean
+        default: true
 
 jobs:
   migrate-databases:
@@ -31,70 +43,31 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
       - name: Apply Restaurant DB migrations
-        working-directory: src/services/RestaurantService/RestaurantService.Infra
-        env:
-          RESTAURANT_DB_CONNECTION: ${{ secrets.RESTAURANT_DB_CONNECTION }}
-        run: |
-          if [ -z "$RESTAURANT_DB_CONNECTION" ]; then
-            echo "Missing secret: RESTAURANT_DB_CONNECTION"
-            exit 1
-          fi
-
-          cat <<EOF > appsettings.json
-          {
-            "ConnectionStrings": {
-              "RestaurantDatabase": "${RESTAURANT_DB_CONNECTION}"
-            }
-          }
-          EOF
-
-          dotnet ef database update \
-            --project RestaurantService.Infra.csproj \
-            --startup-project ../Restaurant.API/RestaurantService.API.csproj \
-            --context RestaurantDbContext
+        if: ${{ inputs.migrate_restaurant }}
+        uses: ./.github/actions/ef-migrate
+        with:
+          working_directory: src/services/RestaurantService/RestaurantService.Infra
+          project: RestaurantService.Infra.csproj
+          startup_project: ../Restaurant.API/RestaurantService.API.csproj
+          context: RestaurantDbContext
+          connection: ${{ secrets.RESTAURANT_DB_CONNECTION }}
 
       - name: Apply Order DB migrations
-        working-directory: src/services/OrderService/OrderService.Infra
-        env:
-          ORDER_DB_CONNECTION: ${{ secrets.ORDER_DB_CONNECTION }}
-        run: |
-          if [ -z "$ORDER_DB_CONNECTION" ]; then
-            echo "Missing secret: ORDER_DB_CONNECTION"
-            exit 1
-          fi
-
-          cat <<EOF > appsettings.json
-          {
-            "ConnectionStrings": {
-              "OrderDatabase": "${ORDER_DB_CONNECTION}"
-            }
-          }
-          EOF
-
-          dotnet ef database update \
-            --project OrderService.Infra.csproj \
-            --startup-project ../OrderService.API/OrderService.API.csproj \
-            --context OrderDbContext
+        if: ${{ inputs.migrate_order }}
+        uses: ./.github/actions/ef-migrate
+        with:
+          working_directory: src/services/OrderService/OrderService.Infra
+          project: OrderService.Infra.csproj
+          startup_project: ../OrderService.API/OrderService.API.csproj
+          context: OrderDbContext
+          connection: ${{ secrets.ORDER_DB_CONNECTION }}
 
       - name: Apply Cart DB migrations
-        working-directory: src/services/CartService/CartService.Infra
-        env:
-          CART_DB_CONNECTION: ${{ secrets.CART_DB_CONNECTION }}
-        run: |
-          if [ -z "$CART_DB_CONNECTION" ]; then
-            echo "Missing secret: CART_DB_CONNECTION"
-            exit 1
-          fi
-
-          cat <<EOF > appsettings.json
-          {
-            "ConnectionStrings": {
-              "CartDatabase": "${CART_DB_CONNECTION}"
-            }
-          }
-          EOF
-
-          dotnet ef database update \
-            --project CartService.Infra.csproj \
-            --startup-project ../CartService.API/CartService.API.csproj \
-            --context CartDbContext
+        if: ${{ inputs.migrate_cart }}
+        uses: ./.github/actions/ef-migrate
+        with:
+          working_directory: src/services/CartService/CartService.Infra
+          project: CartService.Infra.csproj
+          startup_project: ../CartService.API/CartService.API.csproj
+          context: CartDbContext
+          connection: ${{ secrets.CART_DB_CONNECTION }}
