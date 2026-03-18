@@ -31,6 +31,13 @@ runs:
           exit 1
         fi
 
+    - name: Restore NuGet packages
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        dotnet restore ${{ inputs.project }}
+        dotnet restore ${{ inputs.startup_project }}
+
     - name: List pending migrations
       shell: bash
       working-directory: ${{ inputs.working_directory }}
