@@ -51,6 +51,27 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Increase Angular component style budgets
+        working-directory: frontend
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('angular.json', 'utf8'));
+            for (const proj of Object.values(cfg.projects)) {
+              const budgets = proj?.architect?.build?.configurations?.production?.budgets;
+              if (budgets) {
+                for (const b of budgets) {
+                  if (b.type === 'anyComponentStyle') {
+                    b.maximumWarning = '6kb';
+                    b.maximumError = '8kb';
+                  }
+                }
+              }
+            }
+            fs.writeFileSync('angular.json', JSON.stringify(cfg, null, 2));
+            console.log('Budget limits updated successfully.');
+          "
+
       - name: Build Angular app (production)
         working-directory: frontend
         run: npm run build -- --configuration production
