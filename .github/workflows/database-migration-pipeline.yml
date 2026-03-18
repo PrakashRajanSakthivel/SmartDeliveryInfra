@@ -25,12 +25,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Infra Repo
+        uses: actions/checkout@v4
+
       - name: Checkout Code Repo
         uses: actions/checkout@v4
         with:
           repository: PrakashRajanSakthivel/SmartDelivery
           ref: ${{ inputs.code_ref }}
           token: ${{ secrets.CODE_REPO_TOKEN }}
+          path: SmartDelivery
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -46,7 +50,7 @@ jobs:
         if: ${{ inputs.migrate_restaurant }}
         uses: ./.github/actions/ef-migrate
         with:
-          working_directory: src/services/RestaurantService/RestaurantService.Infra
+          working_directory: SmartDelivery/src/services/RestaurantService/RestaurantService.Infra
           project: RestaurantService.Infra.csproj
           startup_project: ../Restaurant.API/RestaurantService.API.csproj
           context: RestaurantDbContext
@@ -56,7 +60,7 @@ jobs:
         if: ${{ inputs.migrate_order }}
         uses: ./.github/actions/ef-migrate
         with:
-          working_directory: src/services/OrderService/OrderService.Infra
+          working_directory: SmartDelivery/src/services/OrderService/OrderService.Infra
           project: OrderService.Infra.csproj
           startup_project: ../OrderService.API/OrderService.API.csproj
           context: OrderDbContext
@@ -66,7 +70,7 @@ jobs:
         if: ${{ inputs.migrate_cart }}
         uses: ./.github/actions/ef-migrate
         with:
-          working_directory: src/services/CartService/CartService.Infra
+          working_directory: SmartDelivery/src/services/CartService/CartService.Infra
           project: CartService.Infra.csproj
           startup_project: ../CartService.API/CartService.API.csproj
           context: CartDbContext

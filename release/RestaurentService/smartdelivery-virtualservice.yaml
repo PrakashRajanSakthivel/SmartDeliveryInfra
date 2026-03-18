@@ -9,12 +9,34 @@ spec:
   gateways:
   - istio-system/istio-public-gateway
   http:
+  # ---------------------------------------------------------------------------
+  # CORS policy — Envoy intercepts OPTIONS preflights at the gateway and replies
+  # directly (200 + CORS headers) without forwarding to the services.
+  # Tighten allowOrigins to your exact Azure SWA URL for production.
+  # ---------------------------------------------------------------------------
+
   # Route for RestaurentService
   - match:
     - uri:
         prefix: /restaurentservice/
     rewrite:
       uri: /
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "http://localhost:4200"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      - Accept
+      allowCredentials: true
+      maxAge: "24h"
     route:
     - destination:
         host: restaurent-service.smartdelivery.svc.cluster.local
@@ -27,6 +49,22 @@ spec:
         prefix: /orderservice/
     rewrite:
       uri: /
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "http://localhost:4200"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      - Accept
+      allowCredentials: true
+      maxAge: "24h"
     route:
     - destination:
         host: order-service.smartdelivery.svc.cluster.local
@@ -39,6 +77,22 @@ spec:
         prefix: /paymentservice/
     rewrite:
       uri: /
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "http://localhost:4200"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      - Accept
+      allowCredentials: true
+      maxAge: "24h"
     route:
     - destination:
         host: payment-service.smartdelivery.svc.cluster.local
@@ -51,6 +105,22 @@ spec:
         prefix: /cartservice/
     rewrite:
       uri: /
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "http://localhost:4200"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      - Accept
+      allowCredentials: true
+      maxAge: "24h"
     route:
     - destination:
         host: cart-service.smartdelivery.svc.cluster.local
@@ -63,6 +133,22 @@ spec:
         prefix: /authservice/
     rewrite:
       uri: /
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "http://localhost:4200"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      - Accept
+      allowCredentials: true
+      maxAge: "24h"
     route:
     - destination:
         host: auth-service.smartdelivery.svc.cluster.local
