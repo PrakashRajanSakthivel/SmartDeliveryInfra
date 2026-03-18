@@ -52,7 +52,7 @@ jobs:
       image_name: ghcr.io/prakashrajansakthivel/paymentservice
       deployment_name: payment-service
       app_label: payment-service
-      configmap_mode: none
+      configmap_mode: payment
       deployment_manifest: release/PaymentService/payment-service-deployment.yaml
       configmap_manifest: release/PaymentService/payment-service-configmap.yaml
       service_manifest: release/PaymentService/payment-service-service.yaml

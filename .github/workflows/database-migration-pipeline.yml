@@ -23,6 +23,10 @@ on:
         description: 'Run Auth DB migration'
         type: boolean
         default: true
+      migrate_payment:
+        description: 'Run Payment DB migration'
+        type: boolean
+        default: true
 
 jobs:
   migrate-databases:
@@ -105,6 +109,16 @@ jobs:
           startup_project: ../AuthService.API/AuthService.API.csproj
           context: AuthDbContext
           connection: ${{ secrets.AUTH_DB_CONNECTION_STRING }}
+
+      - name: Apply Payment DB migrations
+        if: ${{ inputs.migrate_payment }}
+        uses: ./.github/actions/ef-migrate
+        with:
+          working_directory: SmartDelivery/src/services/PaymentService/PaymentService.Infra
+          project: PaymentService.Infra.csproj
+          startup_project: ../PaymentService.API/PaymentService.API.csproj
+          context: PaymentDbContext
+          connection: ${{ secrets.PAYMENT_DB_CONNECTION_STRING }}
 
       - name: Remove runner IP from Azure SQL
         if: always()
