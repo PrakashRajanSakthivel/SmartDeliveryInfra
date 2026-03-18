@@ -1,0 +1,66 @@
+# SmartDelivery Frontend — Build & Deploy to Azure Static Web App
+# Updated: 2025-06-23
+#
+
+
+name: Build and Deploy Frontend
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Branch/ref in SmartDelivery repo to build'
+        required: true
+        default: 'feature/ui_integration'
+        type: string
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    branches:
+      - main
+      - feature/pipeline-init
+
+jobs:
+  build_and_deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout SmartDelivery source
+        uses: actions/checkout@v4
+        with:
+          repository: PrakashRajanSakthivel/SmartDelivery
+          ref: ${{ inputs.source_ref || 'feature/ui_integration' }}
+          token: ${{ secrets.CODE_REPO_TOKEN }}
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Angular app (production)
+        working-directory: frontend
+        run: npm run build -- --configuration production
+
+      - name: Deploy to Azure Static Web App
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "frontend"
+          output_location: "dist/smart-delivery-frontend"
+          skip_app_build: true
