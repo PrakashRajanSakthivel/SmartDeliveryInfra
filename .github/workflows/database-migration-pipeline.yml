@@ -54,7 +54,7 @@ jobs:
           project: RestaurantService.Infra.csproj
           startup_project: ../Restaurant.API/RestaurantService.API.csproj
           context: RestaurantDbContext
-          connection: ${{ secrets.RESTAURANT_DB_CONNECTION }}
+          connection: ${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}
 
       - name: Apply Order DB migrations
         if: ${{ inputs.migrate_order }}
@@ -64,7 +64,7 @@ jobs:
           project: OrderService.Infra.csproj
           startup_project: ../OrderService.API/OrderService.API.csproj
           context: OrderDbContext
-          connection: ${{ secrets.ORDER_DB_CONNECTION }}
+          connection: ${{ secrets.ORDER_DB_CONNECTION_STRING }}
 
       - name: Apply Cart DB migrations
         if: ${{ inputs.migrate_cart }}
@@ -74,4 +74,4 @@ jobs:
           project: CartService.Infra.csproj
           startup_project: ../CartService.API/CartService.API.csproj
           context: CartDbContext
-          connection: ${{ secrets.CART_DB_CONNECTION }}
+          connection: ${{ secrets.CART_DB_CONNECTION_STRING }}
