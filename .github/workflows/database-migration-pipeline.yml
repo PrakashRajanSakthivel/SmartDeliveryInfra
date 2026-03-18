@@ -46,6 +46,22 @@ jobs:
           dotnet tool install --global dotnet-ef
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Allow runner IP on Azure SQL
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "Runner IP: $RUNNER_IP"
+          az sql server firewall-rule create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --server smartdeliverypoc \
+            --name gha-runner-${{ github.run_id }} \
+            --start-ip-address $RUNNER_IP \
+            --end-ip-address $RUNNER_IP
+
       - name: Apply Restaurant DB migrations
         if: ${{ inputs.migrate_restaurant }}
         uses: ./.github/actions/ef-migrate
@@ -75,3 +91,11 @@ jobs:
           startup_project: ../CartService.API/CartService.API.csproj
           context: CartDbContext
           connection: ${{ secrets.CART_DB_CONNECTION_STRING }}
+
+      - name: Remove runner IP from Azure SQL
+        if: always()
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --server smartdeliverypoc \
+            --name gha-runner-${{ github.run_id }}
