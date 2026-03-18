@@ -90,6 +90,8 @@ on:
         required: false
       RESTAURANT_DB_CONNECTION_STRING:
         required: false
+      AUTH_DB_CONNECTION_STRING:
+        required: false
       JWT_SECRET_KEY:
         required: false
       JWT_ISSUER:
@@ -190,6 +192,10 @@ jobs:
 
           if [ "${{ inputs.configmap_mode }}" = "order" ] && [ -n "${{ secrets.ORDER_DB_CONNECTION_STRING }}" ]; then
             sed -i 's|__ORDER_DB_CONNECTION__|${{ secrets.ORDER_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
+          fi
+
+          if [ "${{ inputs.configmap_mode }}" = "auth" ] && [ -n "${{ secrets.AUTH_DB_CONNECTION_STRING }}" ]; then
+            sed -i 's|__AUTH_DB_CONNECTION__|${{ secrets.AUTH_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
           fi
 
           if [ "${{ inputs.configmap_mode }}" = "restaurant" ]; then

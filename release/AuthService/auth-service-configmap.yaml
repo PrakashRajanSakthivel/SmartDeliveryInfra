@@ -13,6 +13,9 @@ data:
         }
       },
       "AllowedHosts": "*",
+      "ConnectionStrings": {
+        "AuthDatabase": "__AUTH_DB_CONNECTION__"
+      },
       "Jwt": {
         "Issuer": "SmartOrderSystem",
         "Audience": "SmartOrderSystemUsers",
