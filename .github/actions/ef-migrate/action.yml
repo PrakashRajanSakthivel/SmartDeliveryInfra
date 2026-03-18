@@ -1,0 +1,57 @@
+name: 'EF Core DB Migration'
+description: 'Lists pending migrations then applies them for a given DbContext'
+
+inputs:
+  working_directory:
+    description: 'Path to the Infra project folder (relative to repo root)'
+    required: true
+  project:
+    description: 'Infra .csproj filename'
+    required: true
+  startup_project:
+    description: 'API .csproj path (relative to working_directory)'
+    required: true
+  context:
+    description: 'DbContext class name'
+    required: true
+  connection:
+    description: 'Database connection string'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Validate connection string
+      shell: bash
+      env:
+        DB_CONNECTION: ${{ inputs.connection }}
+      run: |
+        if [ -z "$DB_CONNECTION" ]; then
+          echo "Error: connection input is empty — verify the secret is configured"
+          exit 1
+        fi
+
+    - name: List pending migrations
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        DB_CONNECTION: ${{ inputs.connection }}
+      run: |
+        echo "--- Pending migrations for ${{ inputs.context }} ---"
+        dotnet ef migrations list \
+          --project ${{ inputs.project }} \
+          --startup-project ${{ inputs.startup_project }} \
+          --context ${{ inputs.context }} \
+          --connection "$DB_CONNECTION"
+
+    - name: Apply migrations
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        DB_CONNECTION: ${{ inputs.connection }}
+      run: |
+        dotnet ef database update \
+          --project ${{ inputs.project }} \
+          --startup-project ${{ inputs.startup_project }} \
+          --context ${{ inputs.context }} \
+          --connection "$DB_CONNECTION"

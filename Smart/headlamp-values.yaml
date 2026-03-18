@@ -1,0 +1,15 @@
+service:
+  type: NodePort
+  nodePort: 30900
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 150m
+    memory: 128Mi
+
+# No PVC needed — stateless UI
+persistentVolumeClaim:
+  enabled: false
