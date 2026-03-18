@@ -57,8 +57,20 @@ runs:
       env:
         DB_CONNECTION: ${{ inputs.connection }}
       run: |
-        dotnet ef database update \
+        MAX_RETRIES=5
+        DELAY=15
+        attempt=1
+        until dotnet ef database update \
           --project ${{ inputs.project }} \
           --startup-project ${{ inputs.startup_project }} \
           --context ${{ inputs.context }} \
-          --connection "$DB_CONNECTION"
+          --connection "$DB_CONNECTION"; do
+          if [ $attempt -ge $MAX_RETRIES ]; then
+            echo "Migration failed after $MAX_RETRIES attempts."
+            exit 1
+          fi
+          echo "Attempt $attempt failed (transient error). Retrying in ${DELAY}s..."
+          sleep $DELAY
+          attempt=$((attempt + 1))
+          DELAY=$((DELAY * 2))
+        done
