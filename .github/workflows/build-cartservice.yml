@@ -2,6 +2,11 @@ name: Build and Push Cart Service
 
 on:
   workflow_dispatch:
+    inputs:
+      code_ref:
+        description: 'SmartDelivery branch/tag to build'
+        required: true
+        default: 'feature/ui_integration'
   # schedule:
   #   - cron: '30 0 * * *'
   push:
@@ -15,7 +20,7 @@ jobs:
     secrets: inherit
     with:
       service_display_name: Cart Service
-      source_ref: feature/migration
+      source_ref: ${{ inputs.code_ref || 'feature/ui_integration' }}
       project_path: src/services/CartService/CartService.API/CartService.API.csproj
       service_folder: CartService
       dll_name: CartService.API.dll
