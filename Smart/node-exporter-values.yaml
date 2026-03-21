@@ -1,0 +1,15 @@
+# -----------------------------------------------------------------------
+# node-exporter Helm values — SmartDelivery
+# Chart  : prometheus-community/prometheus-node-exporter 4.52.1 (app: 1.10.2)
+# Install: helm install node-exporter prometheus-community/prometheus-node-exporter \
+#            -n kube-system -f Smart/node-exporter-values.yaml
+# Installed: 2026-03-21
+# -----------------------------------------------------------------------
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 20Mi
+  limits:
+    cpu: 50m
+    memory: 32Mi

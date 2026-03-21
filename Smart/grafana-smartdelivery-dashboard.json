@@ -1,0 +1,343 @@
+{
+  "id": null,
+  "uid": "smartdelivery-utilization",
+  "title": "SmartDelivery \u2014 Cluster Utilization",
+  "tags": ["smartdelivery", "utilization"],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "title": "\ud83d\udfe2 Cluster Health", "type": "row", "panels": [] },
+
+    {
+      "id": 1, "title": "Node Memory Used %", "type": "gauge",
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "refId": "A", "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100", "legendFormat": "Memory %" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 65 }, { "color": "red", "value": 80 }] } }, "overrides": [] }
+    },
+
+    {
+      "id": 2, "title": "Node CPU Used %", "type": "gauge",
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "refId": "A", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)", "legendFormat": "CPU %" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] } }, "overrides": [] }
+    },
+
+    {
+      "id": 3, "title": "Node Disk Used %", "type": "gauge",
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "refId": "A", "expr": "(1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\", mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\", mountpoint=\"/\"}) * 100", "legendFormat": "Disk %" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] } }, "overrides": [] }
+    },
+
+    {
+      "id": 4, "title": "Free Memory", "type": "stat",
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "refId": "A", "expr": "node_memory_MemAvailable_bytes", "legendFormat": "Available" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1073741824 }, { "color": "green", "value": 2147483648 }] } }, "overrides": [] }
+    },
+
+    {
+      "id": 5, "title": "SmartDelivery Pods Running", "type": "stat",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "refId": "A", "expr": "count(kube_pod_status_phase{namespace=\"smartdelivery\", phase=\"Running\"})", "legendFormat": "Running Pods" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] }
+    },
+
+    {
+      "id": 6, "title": "Total HTTP RPS", "type": "stat",
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\"}[1m]))", "legendFormat": "RPS" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } }, "overrides": [] }
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "id": 101, "title": "\ud83d\udcca Node Utilization Over Time", "type": "row", "panels": [] },
+
+    {
+      "id": 7, "title": "Node Memory Used % (trend)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100", "legendFormat": "Used %" },
+        { "refId": "B", "expr": "80", "legendFormat": "HPA Memory Threshold (80%)" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "none" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "lineWidth": 2, "fillOpacity": 15 }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 65 }, { "color": "red", "value": 80 }] } },
+        "overrides": [{ "matcher": { "id": "byName", "options": "HPA Memory Threshold (80%)" }, "properties": [{ "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } }, { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }, { "id": "custom.fillOpacity", "value": 0 }] }]
+      }
+    },
+
+    {
+      "id": 8, "title": "Node CPU Used % (trend)", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)", "legendFormat": "Used %" },
+        { "refId": "B", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",cpu=\"0\"}[2m])) * 100)", "legendFormat": "Core 0" },
+        { "refId": "C", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",cpu=\"1\"}[2m])) * 100)", "legendFormat": "Core 1" },
+        { "refId": "D", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",cpu=\"2\"}[2m])) * 100)", "legendFormat": "Core 2" },
+        { "refId": "E", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",cpu=\"3\"}[2m])) * 100)", "legendFormat": "Core 3" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "none" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "id": 102, "title": "\u26a0\ufe0f HPA & Pod Scaling", "type": "row", "panels": [] },
+
+    {
+      "id": 9, "title": "Replicas per Service (current / desired / max)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"smartdelivery\"}", "legendFormat": "current \u2014 {{horizontalpodautoscaler}}" },
+        { "refId": "B", "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"smartdelivery\"}", "legendFormat": "desired \u2014 {{horizontalpodautoscaler}}" },
+        { "refId": "C", "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"smartdelivery\"}", "legendFormat": "max \u2014 {{horizontalpodautoscaler}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "none" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "drawStyle": "line", "fillOpacity": 0 } },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [{ "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } }, { "id": "custom.fillOpacity", "value": 0 }] }
+        ]
+      }
+    },
+
+    {
+      "id": 10, "title": "Container Memory per Service (app only, MiB)", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "sum(container_memory_working_set_bytes{namespace=\"smartdelivery\", container!=\"istio-proxy\", container!=\"\"}) by (container)", "legendFormat": "{{container}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 104857600 }, { "color": "red", "value": 157286400 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "id": 11, "title": "Container CPU per Service (cores)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"smartdelivery\", container!=\"istio-proxy\", container!=\"\"}[2m])) by (container)", "legendFormat": "{{container}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "cores", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 8 } }, "overrides": [] }
+    },
+
+    {
+      "id": 12, "title": "HPA Memory Utilisation % — What Triggers Scaling", "type": "bargauge",
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"smartdelivery\",container!=\"istio-proxy\",container!=\"\"}) by (container) / sum(kube_pod_container_resource_requests{namespace=\"smartdelivery\",container!=\"istio-proxy\",resource=\"memory\"}) by (container) * 100",
+          "legendFormat": "{{container}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "minVizWidth": 0,
+        "minVizHeight": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 65 }, { "color": "red", "value": 80 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 }, "id": 103, "title": "\ud83d\udfe1 Istio \u2014 Golden Signals per Service", "type": "row", "panels": [] },
+
+    {
+      "id": 13, "title": "HTTP Requests per Second", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 31, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\"}[1m])) by (destination_workload)", "legendFormat": "{{destination_workload}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+    },
+
+    {
+      "id": 14, "title": "HTTP Error Rate % (5xx)", "type": "timeseries",
+      "gridPos": { "x": 8, "y": 31, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\", response_code=~\"5..\"}[1m])) by (destination_workload) / sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\"}[1m])) by (destination_workload) * 100",
+          "legendFormat": "{{destination_workload}}"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "id": 15, "title": "P95 Latency per Service (ms)", "type": "timeseries",
+      "gridPos": { "x": 16, "y": 31, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\"}[1m])) by (destination_workload, le))", "legendFormat": "p95 \u2014 {{destination_workload}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.50, sum(rate(istio_request_duration_milliseconds_bucket{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\"}[1m])) by (destination_workload, le))", "legendFormat": "p50 \u2014 {{destination_workload}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms", "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 250 }, { "color": "red", "value": 500 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 }, "id": 104, "title": "\ud83d\udd34 Reliability & Load Test Readiness", "type": "row", "panels": [] },
+
+    {
+      "id": 16, "title": "Pod Restart Count (last 1h)", "type": "stat",
+      "gridPos": { "x": 0, "y": 40, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"smartdelivery\"}[1h])) by (pod)", "legendFormat": "{{pod}}" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "id": 17, "title": "Overall Error Rate %", "type": "stat",
+      "gridPos": { "x": 6, "y": 40, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\", response_code=~\"5..\"}[5m])) / sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\"}[5m])) * 100",
+          "legendFormat": "Error Rate %"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "id": 18, "title": "Memory Headroom Before OOM Risk", "type": "stat",
+      "gridPos": { "x": 12, "y": 40, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "node_memory_MemAvailable_bytes", "legendFormat": "Free" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1073741824 }, { "color": "green", "value": 2147483648 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "id": 19, "title": "HPA Headroom per Service (max \u2212 current replicas)", "type": "bargauge",
+      "gridPos": { "x": 18, "y": 40, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"smartdelivery\"} - kube_horizontalpodautoscaler_status_current_replicas{namespace=\"smartdelivery\"}",
+          "legendFormat": "{{horizontalpodautoscaler}}"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true, "minVizHeight": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 2 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "id": 20, "title": "Per-Pod Memory over Time (all smartdelivery pods)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 44, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "container_memory_working_set_bytes{namespace=\"smartdelivery\", container!=\"istio-proxy\", container!=\"\"}", "legendFormat": "{{container}} / {{pod}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "lineWidth": 1, "fillOpacity": 5 } }, "overrides": [] }
+    },
+
+    {
+      "id": 21, "title": "Istio Inbound RPS — Envoy Sidecar View", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 44, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\", response_code=~\"2..\"}[1m])) by (destination_workload)", "legendFormat": "2xx \u2014 {{destination_workload}}" },
+        { "refId": "B", "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\", response_code=~\"4..\"}[1m])) by (destination_workload)", "legendFormat": "4xx \u2014 {{destination_workload}}" },
+        { "refId": "C", "expr": "sum(rate(istio_requests_total{destination_workload_namespace=\"smartdelivery\", reporter=\"destination\", response_code=~\"5..\"}[1m])) by (destination_workload)", "legendFormat": "5xx \u2014 {{destination_workload}}" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 8 } },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      }
+    }
+
+  ]
+}

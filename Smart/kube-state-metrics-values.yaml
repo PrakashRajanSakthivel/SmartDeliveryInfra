@@ -1,0 +1,15 @@
+# -----------------------------------------------------------------------
+# kube-state-metrics Helm values — SmartDelivery
+# Chart  : prometheus-community/kube-state-metrics 7.2.1 (app: 2.18.0)
+# Install: helm install kube-state-metrics prometheus-community/kube-state-metrics \
+#            -n kube-system -f Smart/kube-state-metrics-values.yaml
+# Installed: 2026-03-21
+# -----------------------------------------------------------------------
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 50m
+    memory: 64Mi

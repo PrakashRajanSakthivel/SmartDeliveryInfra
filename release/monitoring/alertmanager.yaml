@@ -1,0 +1,107 @@
+# Alertmanager — minimal deployment for SmartDelivery alerts
+#
+# Receives alerts from Prometheus and routes them to Slack.
+# Fill in YOUR_SLACK_WEBHOOK_URL before applying.
+#
+# Create a Slack incoming webhook here:
+#   https://api.slack.com/messaging/webhooks
+#
+# Apply:
+#   kubectl apply -f release/monitoring/alertmanager.yaml
+#
+# After applying, patch Prometheus to send alerts here (one-time):
+#   kubectl patch configmap prometheus -n istio-system --type=json \
+#     --patch='[{"op":"add","path":"/data/prometheus.yml","value":"REPLACED_BY_SCRIPT"}]'
+#
+# Simpler — use the patch script:
+#   release/monitoring/patch-prometheus.ps1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: istio-system
+data:
+  alertmanager.yml: |
+    global:
+      slack_api_url: "<YOUR_SLACK_WEBHOOK_URL>"
+
+    route:
+      receiver: slack
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+      - matchers:
+        - severity = critical
+        receiver: slack
+        group_wait: 10s
+        repeat_interval: 1h
+
+    receivers:
+    - name: slack
+      slack_configs:
+      - channel: "#smartdelivery-alerts"
+        title: '{{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: istio-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:v0.27.0
+        ports:
+        - containerPort: 9093
+        args:
+        - --config.file=/etc/alertmanager/alertmanager.yml
+        - --storage.path=/alertmanager
+        - --log.level=warn
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/alertmanager
+        - name: storage
+          mountPath: /alertmanager
+      volumes:
+      - name: config
+        configMap:
+          name: alertmanager-config
+      - name: storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: istio-system
+spec:
+  selector:
+    app: alertmanager
+  ports:
+  - port: 9093
+    targetPort: 9093

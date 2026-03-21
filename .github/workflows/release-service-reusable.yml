@@ -204,21 +204,13 @@ jobs:
             sed -i 's|__PAYMENT_DB_CONNECTION__|${{ secrets.PAYMENT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
           fi
 
-          if [ "${{ inputs.configmap_mode }}" = "restaurant" ]; then
+          if [ "${{ inputs.configmap_mode }}" = "restaurant" ] && [ -n "${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}" ]; then
             sed -i 's|__RESTAURANT_DB_CONNECTION__|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
-            sed -i 's|PLACEHOLDER_JWT_SECRET_KEY|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+          fi
 
-            if [ -n "${{ secrets.JWT_ISSUER }}" ]; then
-              sed -i 's|PLACEHOLDER_JWT_ISSUER|${{ secrets.JWT_ISSUER }}|g' /tmp/configmap-template.yaml
-            fi
-
-            if [ -n "${{ secrets.JWT_AUDIENCE }}" ]; then
-              sed -i 's|PLACEHOLDER_JWT_AUDIENCE|${{ secrets.JWT_AUDIENCE }}|g' /tmp/configmap-template.yaml
-            fi
-
-            if [ -n "${{ secrets.ELASTICSEARCH_URI }}" ]; then
-              sed -i 's|PLACEHOLDER_ELASTICSEARCH_URI|${{ secrets.ELASTICSEARCH_URI }}|g' /tmp/configmap-template.yaml
-            fi
+          # JWT secret key — applied to all services (shared signing key across the mesh)
+          if [ -n "${{ secrets.JWT_SECRET_KEY }}" ]; then
+            sed -i 's|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
           fi
 
           kubectl --kubeconfig=kubeconfig apply -f /tmp/configmap-template.yaml

@@ -1,0 +1,35 @@
+# PersistentVolume — Hetzner Volume for Elasticsearch
+#
+# Prerequisites (run once on sd-master as root):
+#   mkfs.ext4 -F /dev/disk/by-id/scsi-0HC_Volume_105186461
+#   mkdir /mnt/es-pv
+#   mount -o discard,defaults /dev/disk/by-id/scsi-0HC_Volume_105186461 /mnt/es-pv
+#   echo "/dev/disk/by-id/scsi-0HC_Volume_105186461 /mnt/es-pv ext4 discard,nofail,defaults 0 0" >> /etc/fstab
+#   chown -R 1000:1000 /mnt/es-pv
+#
+# Apply order:
+#   kubectl apply -f release/logging/elasticsearch-pv.yaml
+#   kubectl apply -f release/logging/elasticsearch-pvc.yaml
+#   kubectl apply -f release/logging/elasticsearch.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: elasticsearch-hetzner-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /mnt/es-pv
+    type: Directory
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - sd-master

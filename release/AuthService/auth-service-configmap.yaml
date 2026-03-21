@@ -19,7 +19,7 @@ data:
       "Jwt": {
         "Issuer": "SmartOrderSystem",
         "Audience": "SmartOrderSystemUsers",
-        "SecretKey": "VerySecretKeyForSigningTokens123!"
+        "SecretKey": "__JWT_SECRET_KEY__"
       },
       "Elasticsearch": {
         "Uri": "http://elasticsearch.logging.svc.cluster.local:9200",

@@ -1,11 +1,23 @@
-# Minimal gateway configuration for ARM
+# -----------------------------------------------------------------------
+# Istio gateway Helm values — SmartDelivery
+# Chart  : istio/gateway  version 1.25.2
+# Used for BOTH ingressgateway and egressgateway (installed separately):
+#   helm install istio-ingressgateway istio/gateway -n istio-system \
+#     -f Smart/gateway-values.yaml
+#   helm install istio-egressgateway istio/gateway -n istio-system \
+#     -f Smart/gateway-values.yaml
+#
+# NOTE: resources were reduced via kubectl patch after initial install.
+#       Values below reflect what is ACTUALLY RUNNING in the cluster.
+# -----------------------------------------------------------------------
+
 resources:
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 10m
+    memory: 40Mi
   limits:
-    cpu: 200m
-    memory: 256Mi
+    cpu: "2"
+    memory: 1Gi
 
 autoscaleEnabled: false
 replicaCount: 1

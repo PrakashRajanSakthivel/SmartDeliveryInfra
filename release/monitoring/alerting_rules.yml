@@ -1,0 +1,64 @@
+groups:
+- name: smartdelivery.node
+  rules:
+  - alert: NodeMemoryCritical
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Node memory above 90%"
+      description: "Memory usage is {{ $value | humanizePercentage }}. High risk of OOM cascade on single-node cluster."
+
+  - alert: NodeMemoryWarning
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Node memory above 85%"
+      description: "Memory usage is {{ $value | humanizePercentage }}. Consider scaling down Kibana before load testing."
+
+- name: smartdelivery.pods
+  rules:
+  - alert: PodOOMKilled
+    expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled", namespace="smartdelivery"} > 0
+    for: 0m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pod OOM killed: {{ $labels.pod }}"
+      description: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} was OOM killed. Raise limits.memory or reduce replicas."
+
+  - alert: PodCrashLooping
+    expr: increase(kube_pod_container_status_restarts_total{namespace="smartdelivery"}[15m]) > 2
+    for: 0m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pod crash looping: {{ $labels.pod }}"
+      description: "{{ $labels.pod }}/{{ $labels.container }} restarted {{ $value | humanize }} times in 15 minutes."
+
+- name: smartdelivery.hpa
+  rules:
+  - alert: HPAAtMaxReplicas
+    expr: |
+      kube_horizontalpodautoscaler_status_current_replicas{namespace="smartdelivery"}
+      == kube_horizontalpodautoscaler_spec_max_replicas{namespace="smartdelivery"}
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HPA saturated: {{ $labels.horizontalpodautoscaler }}"
+      description: "{{ $labels.horizontalpodautoscaler }} has been at max replicas ({{ $value }}) for 5m. Service may not be able to scale to meet demand."
+
+  - alert: HPAScalingAtIdle
+    expr: |
+      kube_horizontalpodautoscaler_status_current_replicas{namespace="smartdelivery"} > 1
+      AND sum(rate(istio_requests_total{destination_service_namespace="smartdelivery"}[5m])) < 0.1
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HPA scaled out with near-zero traffic: {{ $labels.horizontalpodautoscaler }}"
+      description: "{{ $labels.horizontalpodautoscaler }} has {{ $value }} replicas but cluster-wide RPS is near zero. Likely a memory request baseline issue."

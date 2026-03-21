@@ -1,19 +1,3 @@
-# -----------------------------------------------------------------------
-# Elasticsearch — SmartDelivery
-#
-# NOT a Helm chart. Deployed via kubectl apply (raw manifest).
-#
-# Manifest location: release/logging/elasticsearch.yaml
-# Namespace:         release/logging/namespace.yaml
-#
-# Apply:
-#   kubectl apply -f release/logging/namespace.yaml
-#   kubectl apply -f release/logging/elasticsearch.yaml
-#
-# Versions: elasticsearch:8.15.0
-# Resources: requests cpu=500m/memory=1Gi  limits cpu=1000m/memory=1.5Gi
-# Storage:   emptyDir (ephemeral — data is lost on pod restart)
-# -----------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -46,17 +30,21 @@ spec:
         - containerPort: 9300
         resources:
           requests:
-            memory: "1Gi"
             cpu: "500m"
+            memory: "1Gi"
           limits:
-            memory: "1.5Gi"
             cpu: "1000m"
+            memory: "1.5Gi"
         volumeMounts:
         - name: data
           mountPath: /usr/share/elasticsearch/data
       volumes:
       - name: data
-        emptyDir: {}
+        # Azure Files persistent storage — survives pod restarts and node reboots.
+        # Requires: azure-file CSI driver + PV + PVC (see release/logging/elasticsearch-pv.yaml)
+        # To revert to ephemeral storage (no Azure account), swap back to emptyDir: {}
+        persistentVolumeClaim:
+          claimName: elasticsearch-data
 ---
 apiVersion: v1
 kind: Service
@@ -73,4 +61,3 @@ spec:
   - name: transport
     port: 9300
     targetPort: 9300
-EOF

@@ -2,20 +2,22 @@
 # istiod Helm values — SmartDelivery (k3s single-node, resource-constrained)
 # Chart  : istio/istiod  version 1.25.2
 # Node   : 4 vCPU / 7.5 GiB  (sd-master)
-# Managed: helm upgrade istiod istio/istiod -n istio-system -f Smart/istiod-values.yaml
+# Install: helm install istiod istio/istiod -n istio-system --create-namespace \
+#            -f Smart/istiod-values.yaml
 #
-# WARNING: these values reflect the LIVE cluster config.
-#          Do not change extensionProviders without also updating
-#          any Telemetry resources that reference provider names.
+# NOTE: resources were reduced via kubectl patch after initial install
+#       to minimise memory footprint on the single VPS node.
+#       Values below reflect what is ACTUALLY RUNNING in the cluster.
+#
+# WARNING: Do not change extensionProviders without also updating any
+#          Telemetry resources that reference those provider names.
 # -----------------------------------------------------------------------
 
 resources:
   requests:
-    cpu: 250m
-    memory: 256Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 10m
+    memory: 100Mi
+  # No limits set intentionally — pilot must not be OOM-killed on a single node.
 
 meshConfig:
   # Emit Envoy access logs to stdout (visible via kubectl logs)
@@ -37,8 +39,24 @@ meshConfig:
     tracing:
     - jaeger
 
-  # Named extension providers referenced by Telemetry resources
+  # Named extension providers referenced by Telemetry resources.
+  # otel / skywalking / otel-tracing were injected automatically by the
+  # Helm chart defaults — they were NOT explicitly configured.
+  # Removing them would be a breaking change if anything references them
+  # by name, so they are kept as-is.
   extensionProviders:
+  - name: otel
+    envoyOtelAls:
+      port: 4317
+      service: opentelemetry-collector.observability.svc.cluster.local
+  - name: skywalking
+    skywalking:
+      port: 11800
+      service: tracing.istio-system.svc.cluster.local
+  - name: otel-tracing
+    opentelemetry:
+      port: 4317
+      service: opentelemetry-collector.observability.svc.cluster.local
   - name: jaeger
     opentelemetry:
       port: 4317

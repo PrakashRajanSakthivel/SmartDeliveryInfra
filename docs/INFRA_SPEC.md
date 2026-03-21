@@ -61,19 +61,21 @@ This is a showcase project. No HA, no autoscaling beyond HPA (defined but not ex
 
 | Namespace | Component | CPU | Memory |
 |-----------|-----------|-----|--------|
-| `istio-system` | prometheus | 20m | 478 MiB |
-| `istio-system` | grafana | 4m | 160 MiB |
-| `istio-system` | istiod | 5m | 109 MiB |
-| `istio-system` | kiali | 6m | 72 MiB |
-| `istio-system` | ingressgateway | 4m | 79 MiB |
-| `istio-system` | egressgateway | 6m | 33 MiB |
-| `istio-system` | jaeger | 12m | 41 MiB |
-| `logging` | elasticsearch | 10m | **1167 MiB** |
-| `logging` | kibana | 55m | 567 MiB |
+| `istio-system` | prometheus | 54m | 477 MiB |
+| `istio-system` | grafana | 7m | 161 MiB |
+| `istio-system` | istiod | 6m | 105 MiB |
+| `istio-system` | kiali | 7m | 69 MiB |
+| `istio-system` | ingressgateway | 5m | 43 MiB |
+| `istio-system` | egressgateway | 4m | 42 MiB |
+| `istio-system` | jaeger | 11m | 42 MiB |
+| `logging` | elasticsearch | 8m | **1156 MiB** |
+| `logging` | kibana | 52m | 583 MiB |
 | `kube-system` | headlamp | ~5m | ~80 MiB |
-| `smartdelivery` | 5 services × ~80 MiB | ~26m | ~432 MiB |
-| `smartdelivery` | 5 Envoy sidecars × ~33 MiB | ~15m | ~165 MiB |
-| **Node total** | | **394m (9%)** | **5427 MiB (70%)** |
+| `kube-system` | **kube-state-metrics** *(added 2026-03-21)* | 10m | ~35 MiB |
+| `kube-system` | **node-exporter** *(added 2026-03-21)* | 10m | ~25 MiB |
+| `smartdelivery` | 5 services (12 pods — HPA scaled) | ~51m | ~597 MiB |
+| `smartdelivery` | 12 Envoy sidecars | ~15m | ~165 MiB |
+| **Node total** | | **451m (11%)** | **5797 MiB (75%)** |
 
 ### Headroom for remaining two services
 
