@@ -17,6 +17,7 @@
 8. [CI/CD Integration](#8-cicd-integration)
 9. [Apply Order & Runbook](#9-apply-order--runbook)
 10. [Known Limitations](#10-known-limitations)
+11. [Roadmap](#11-roadmap)
 
 ---
 
@@ -491,3 +492,99 @@ kubectl port-forward svc/grafana 3000:3000 -n istio-system
 | 8 | **Kiali `tracing.enabled: false`** in live cluster | Trace links missing in Kiali | ❌ **Fixed:** applied `release/istio-observability.yaml` + Kiali restarted |
 | 9 | **`kubectl get gateway -A` shows nothing** (k3s CRD ambiguity) | Misleading — Gateway does exist (192d old) | ✅ Use `kubectl get gateways.networking.istio.io -A` |
 | 10 | **`/orderservice/api/diagnostics/chain` via ingress returned 404 during latest verification** | Prevents clean end-to-end ingress trace demo for diagnostics endpoint | ⚠️ Investigate VirtualService rewrite/path behavior for this route |
+
+---
+
+## 11. Roadmap
+
+These are deliberate next steps — decisions made after gaining full understanding of the
+current setup. Each is documented here with the architectural reasoning so the intent is
+clear when the work is picked up.
+
+### R1 — Add Second Hetzner Node (Worker)
+
+**Status:** Planned
+**Motivation:** The single-node constraint is the biggest architectural bottleneck.
+Elasticsearch + Kibana alone consume ~1.7 GiB (23% of total RAM) on `sd-master`, leaving
+limited headroom for load testing and HPA scale-out.
+
+**Approach:**
+- Add a second Hetzner VPS (CX22 — same spec as sd-master) as a **k3s agent** node
+- Create a Hetzner **private network** between both nodes — required for k3s inter-node
+  pod traffic to avoid going over the public interface
+- Label the new node `role=logging` and add a `nodeSelector` to the Elasticsearch and
+  Kibana deployments to schedule them there
+- The Hetzner Volume (`/mnt/es-pv`, PV `elasticsearch-hetzner-pv`) is currently bound to
+  `sd-master` via `nodeAffinity`. When Elasticsearch moves to the new node, detach the
+  volume from `sd-master`, attach it to `sd-node2`, and update the PV `nodeAffinity`.
+- No change to Istio, app services, or observability — they stay on `sd-master`
+
+**Expected outcome after migration:**
+
+| Metric | Before | After |
+|---|---|---|
+| `sd-master` memory used at idle | ~75% | ~52% |
+| RAM freed on sd-master | — | ~1.7 GiB |
+| HPA scale-out headroom | Minimal | Sufficient for load test |
+| Logging stack isolation | None | Full — logging failures don't impact app node |
+
+**Commands to join new node (after creating it in Hetzner):**
+```bash
+# On sd-master — get join token
+cat /var/lib/rancher/k3s/server/node-token
+
+# On sd-node2 — join as agent
+curl -sfL https://get.k3s.io | K3S_URL=https://46.62.150.44:6443 K3S_TOKEN=<token> sh -
+
+# Label the new node
+kubectl label node sd-node2 role=logging
+```
+
+---
+
+### R2 — Full Helm Migration
+
+**Status:** Planned (lower priority than R1)
+**Motivation:** Currently Prometheus, Grafana, Jaeger, Kiali, Elasticsearch and Kibana are
+deployed via `kubectl apply` with no Helm state. This means:
+- No `helm rollback` on a bad config change
+- No `helm get values` to inspect live effective config
+- Manual diffing required to audit drift (the current `docs/REPO_VS_CLUSTER_AUDIT.md` is
+  the workaround for this)
+
+**Planned chart mapping:**
+
+| Component | Current | Target Helm Chart |
+|---|---|---|
+| Prometheus | `kubectl apply` (Istio addon) | `prometheus-community/prometheus` |
+| Grafana | `kubectl apply` (Istio addon) | `grafana/grafana` |
+| Jaeger | `kubectl apply` (Istio addon) | `jaegertracing/jaeger` |
+| Kiali | `kubectl apply` (Istio addon) | `kiali/kiali-server` |
+| Elasticsearch | `kubectl apply` (raw manifest) | `elastic/elasticsearch` |
+| Kibana | `kubectl apply` (raw manifest) | `elastic/kibana` |
+| istiod | Helm (state lost) | `istio/istiod` — re-install to restore state |
+
+**Breaking changes to plan for:**
+- Prometheus and Grafana move to their own namespace — datasource URL changes from
+  `http://prometheus:9090` to `http://prometheus-server.<ns>.svc:9090`
+- All Grafana dashboard ConfigMaps and GHA monitoring pipeline need updating
+- Elasticsearch URL changes if namespace changes — all 5 service configmaps need updating
+
+**Recommended migration order:** Do this as part of the second-node work (R1), not before.
+Migrating namespaces and Helm state while everything is on one node increases downtime risk.
+
+---
+
+### R3 — Alertmanager + Slack Alerts
+
+**Status:** Ready to activate (manifests already in repo)
+**Files:** `release/monitoring/alertmanager.yaml`, `release/monitoring/alerting_rules.yml`,
+`release/monitoring/patch-prometheus.ps1`
+
+**To activate:**
+1. Add Slack incoming webhook URL to `release/monitoring/alertmanager.yaml`
+2. `kubectl apply -f release/monitoring/alertmanager.yaml`
+3. `pwsh release/monitoring/patch-prometheus.ps1`
+
+**Rules included:** node memory >85%/90%, pod OOM kill, pod crash loop, HPA at max,
+HPA scaling at idle.

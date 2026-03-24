@@ -12,65 +12,8 @@
 #
 # Versions: elasticsearch:8.15.0
 # Resources: requests cpu=500m/memory=1Gi  limits cpu=1000m/memory=1.5Gi
-# Storage:   emptyDir (ephemeral — data is lost on pod restart)
+# Storage:   Hetzner Volume (PVC: elasticsearch-data, PV: elasticsearch-hetzner-pv)
+#            hostPath: /mnt/es-pv on sd-master, reclaimPolicy: Retain
+# PV/PVC:    release/logging/elasticsearch-pv.yaml
+#            release/logging/elasticsearch-pvc.yaml
 # -----------------------------------------------------------------------
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: elasticsearch
-  namespace: logging
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: elasticsearch
-  template:
-    metadata:
-      labels:
-        app: elasticsearch
-    spec:
-      containers:
-      - name: elasticsearch
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-        env:
-        - name: discovery.type
-          value: single-node
-        - name: xpack.security.enabled
-          value: "false"
-        - name: ES_JAVA_OPTS
-          value: "-Xms512m -Xmx512m"
-        - name: cluster.name
-          value: "elasticsearch"
-        ports:
-        - containerPort: 9200
-        - containerPort: 9300
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "1.5Gi"
-            cpu: "1000m"
-        volumeMounts:
-        - name: data
-          mountPath: /usr/share/elasticsearch/data
-      volumes:
-      - name: data
-        emptyDir: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: elasticsearch
-  namespace: logging
-spec:
-  selector:
-    app: elasticsearch
-  ports:
-  - name: http
-    port: 9200
-    targetPort: 9200
-  - name: transport
-    port: 9300
-    targetPort: 9300
-EOF
