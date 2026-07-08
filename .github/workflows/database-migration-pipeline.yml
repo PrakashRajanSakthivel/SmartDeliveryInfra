@@ -6,7 +6,7 @@ on:
       code_ref:
         description: 'SmartDelivery branch/tag to use'
         required: true
-        default: 'feature/pipeline-init'
+        default: 'feature/ui_integration'
       migrate_restaurant:
         description: 'Run Restaurant DB migration'
         type: boolean
