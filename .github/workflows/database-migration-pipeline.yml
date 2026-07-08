@@ -65,7 +65,7 @@ jobs:
           echo "Runner IP: $RUNNER_IP"
           az sql server firewall-rule create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --server smartdeliverypoc \
+            --server ${{ secrets.AZURE_SQL_SERVER }} \
             --name gha-runner-${{ github.run_id }} \
             --start-ip-address $RUNNER_IP \
             --end-ip-address $RUNNER_IP
@@ -125,5 +125,5 @@ jobs:
         run: |
           az sql server firewall-rule delete \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --server smartdeliverypoc \
+            --server ${{ secrets.AZURE_SQL_SERVER }} \
             --name gha-runner-${{ github.run_id }}
