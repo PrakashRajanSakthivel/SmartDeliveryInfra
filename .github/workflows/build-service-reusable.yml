@@ -42,8 +42,6 @@ on:
         type: boolean
         default: false
     secrets:
-      CODE_REPO_TOKEN:
-        required: true
       GHCR_PAT:
         required: true
 
@@ -58,7 +56,6 @@ jobs:
         with:
           repository: ${{ inputs.source_repo }}
           ref: ${{ inputs.source_ref }}
-          token: ${{ secrets.CODE_REPO_TOKEN }}
 
       - name: Clean workspace
         run: git clean -fdx

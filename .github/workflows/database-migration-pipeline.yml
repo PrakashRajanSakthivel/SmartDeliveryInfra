@@ -41,7 +41,6 @@ jobs:
         with:
           repository: PrakashRajanSakthivel/SmartDelivery
           ref: ${{ inputs.code_ref }}
-          token: ${{ secrets.CODE_REPO_TOKEN }}
           path: SmartDelivery
 
       - name: Setup .NET
