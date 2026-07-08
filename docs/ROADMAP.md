@@ -1,6 +1,6 @@
 # SmartDelivery Infra — Roadmap
 
-Current cluster: k3s single-node, Hetzner CX22 (4 vCPU / 7.5 GiB), running at ~75% memory utilisation.
+Current cluster: k3s two-node (sd-master + sd-worker-0), Hetzner CX22 × 2, Flannel VXLAN on private 10.0.0.0/16 network.
 
 ---
 
@@ -8,11 +8,11 @@ Current cluster: k3s single-node, Hetzner CX22 (4 vCPU / 7.5 GiB), running at ~7
 
 **Goal:** Add a second Hetzner node before any load testing. Current single-node utilisation (~75%) leaves no headroom for HPA scale-out under load.
 
-- [ ] Provision second Hetzner node (CX22 or CX32)
-- [ ] Join as k3s worker node (`k3s agent`)
-- [ ] Verify pod scheduling across both nodes (`kubectl get pods -o wide`)
-- [ ] Update `docs/INFRA_SPEC.md` with new node details
-- [ ] Update firewall scripts in `base/` for new node IP
+- [x] Provision second Hetzner node (CX22 or CX32)
+- [x] Join as k3s worker node (`k3s agent`)
+- [x] Verify pod scheduling across both nodes (`kubectl get pods -o wide`)
+- [x] Update `docs/INFRA_SPEC.md` with new node details
+- [x] Update firewall scripts in `base/` for new node IP
 
 ---
 
@@ -20,11 +20,11 @@ Current cluster: k3s single-node, Hetzner CX22 (4 vCPU / 7.5 GiB), running at ~7
 
 **Goal:** Run realistic load against the live cluster, observe HPA scaling, capture Grafana metrics.
 
-- [ ] Review and finalise `release/k6-load-test.js` scenarios
-- [ ] Run k6 against all 5 service endpoints through the Istio IngressGateway
-- [ ] Capture Grafana dashboard during ramp-up (HPA scaling in action)
-- [ ] Document p95 latency and error rate baselines per service
-- [ ] Screenshot Grafana + HPA output for README / post
+- [x] Review and finalise `release/k6-load-test.js` scenarios
+- [x] Run k6 against all 5 service endpoints through the Istio IngressGateway
+- [x] Capture Grafana dashboard during ramp-up (HPA scaling in action)
+- [x] Document p95 latency and error rate baselines per service (p95 2.41s, 555 iterations)
+- [x] Screenshot Grafana + HPA output for README / post
 
 ---
 
@@ -32,10 +32,10 @@ Current cluster: k3s single-node, Hetzner CX22 (4 vCPU / 7.5 GiB), running at ~7
 
 **Goal:** Validate mesh resilience using Istio-native fault injection (zero additional tooling).
 
-- [ ] Inject HTTP delay (5s) into `payment-service` — observe Jaeger trace impact
-- [ ] Inject HTTP abort (503) into `order-service` — observe error rate in Grafana
-- [ ] Test pod deletion (`kubectl delete pod`) — verify self-healing and HPA response
-- [ ] Document recovery times and mesh behaviour
+- [x] Inject HTTP delay (5s) into `payment-service` — observe Jaeger trace impact
+- [x] Inject HTTP abort (503) into `order-service` — observe error rate in Grafana
+- [x] Document recovery times and mesh behaviour (see `docs/CHAOS_TESTING.md`)
+- [ ] ~~Test pod deletion (`kubectl delete pod`)~~ — skipped; ReplicaSet self-healing is Kubernetes core behaviour, not app-specific
 
 ---
 

@@ -1,0 +1,39 @@
+# =============================================================================
+# Chaos Experiment 1 — HTTP Delay on payment-service
+#
+# Injects a 5-second fixed delay on 100% of requests that flow through the
+# Istio sidecar TO payment-service inside the mesh.
+#
+# Effect:
+#   - Any service calling /paymentservice/* will stall for 5s before
+#     receiving a response.
+#   - Downstream callers that have no timeout set will block.
+#   - Callers with a timeout < 5s will surface a 504 (upstream request timeout).
+#   - Jaeger: traces will show a 5s+ span for payment-service calls.
+#   - Grafana: p95 latency for PaymentService will spike to ~5s+.
+#
+# Apply:   kubectl apply -f release/chaos/payment-service-delay.yaml
+# Remove:  kubectl delete -f release/chaos/payment-service-delay.yaml
+# =============================================================================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: payment-service-chaos-delay
+  namespace: smartdelivery
+  labels:
+    chaos: "true"
+    experiment: delay
+spec:
+  hosts:
+  - payment-service.smartdelivery.svc.cluster.local
+  http:
+  - fault:
+      delay:
+        fixedDelay: 5s
+        percentage:
+          value: 100
+    route:
+    - destination:
+        host: payment-service.smartdelivery.svc.cluster.local
+        port:
+          number: 8080
