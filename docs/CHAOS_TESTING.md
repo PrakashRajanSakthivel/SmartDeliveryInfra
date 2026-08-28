@@ -157,7 +157,7 @@ returns 503 immediately causes less cascading damage than one that hangs.
 
 **Implementation note:** Fault must be injected in the main gateway VirtualService
 (`smartdelivery-vs`), not a separate chaos VS targeting the internal FQDN — the
-IngressGateway only looks at `hosts: [smartdeliveryapi.rajanlabs.com]`.
+IngressGateway only looks at `hosts: [smartdeliveryapi.rajanhub.com]`.
 
 ---
 
@@ -233,7 +233,7 @@ kubectl get pods -n smartdelivery -o wide
 # Expected: all 2/2 Running
 
 # Spot-check an actual request
-curl -s -o /dev/null -w "%{http_code}" https://smartdeliveryapi.rajanlabs.com/healthz
+curl -s -o /dev/null -w "%{http_code}" https://smartdeliveryapi.rajanhub.com/healthz
 # Expected: 200
 ```
 

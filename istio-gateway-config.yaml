@@ -34,14 +34,14 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "smartdeliveryapi.rajanlabs.com"
+    - "smartdeliveryapi.rajanhub.com"
   # --- HTTPS (Cloudflare Full Strict — requires smartdeliveryapi-tls secret) ---
   - port:
       number: 443
       name: https
       protocol: HTTPS
     hosts:
-    - "smartdeliveryapi.rajanlabs.com"
+    - "smartdeliveryapi.rajanhub.com"
     tls:
       mode: SIMPLE
       credentialName: smartdeliveryapi-tls

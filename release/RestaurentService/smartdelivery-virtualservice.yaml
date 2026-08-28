@@ -5,7 +5,7 @@ metadata:
   namespace: smartdelivery
 spec:
   hosts:
-  - "smartdeliveryapi.rajanlabs.com"
+  - "smartdeliveryapi.rajanhub.com"
   gateways:
   - istio-system/istio-public-gateway
   http:
@@ -23,7 +23,7 @@ spec:
       uri: /
     corsPolicy:
       allowOrigins:
-      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "https://smartdelivery.rajanhub.com"
       - exact: "http://localhost:4200"
       allowMethods:
       - GET
@@ -51,7 +51,7 @@ spec:
       uri: /
     corsPolicy:
       allowOrigins:
-      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "https://smartdelivery.rajanhub.com"
       - exact: "http://localhost:4200"
       allowMethods:
       - GET
@@ -79,7 +79,7 @@ spec:
       uri: /
     corsPolicy:
       allowOrigins:
-      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "https://smartdelivery.rajanhub.com"
       - exact: "http://localhost:4200"
       allowMethods:
       - GET
@@ -107,7 +107,7 @@ spec:
       uri: /
     corsPolicy:
       allowOrigins:
-      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "https://smartdelivery.rajanhub.com"
       - exact: "http://localhost:4200"
       allowMethods:
       - GET
@@ -135,7 +135,7 @@ spec:
       uri: /
     corsPolicy:
       allowOrigins:
-      - exact: "https://smartdelivery.rajanlabs.com"
+      - exact: "https://smartdelivery.rajanhub.com"
       - exact: "http://localhost:4200"
       allowMethods:
       - GET

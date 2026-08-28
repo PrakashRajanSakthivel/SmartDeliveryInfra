@@ -13,7 +13,7 @@
  * Override target VUs / duration:
  *   k6 run --vus 10 --duration 2m SmartDelivery/scripts/k6-load-test.js
  *
- * Targets: https://smartdeliveryapi.rajanlabs.com
+ * Targets: https://smartdeliveryapi.rajanhub.com
  */
 
 import http from 'k6/http';
@@ -21,7 +21,7 @@ import { check, sleep } from 'k6';
 import { Trend, Rate } from 'k6/metrics';
 
 // ── Ingress base paths ────────────────────────────────────────────────────────
-const BASE  = 'https://smartdeliveryapi.rajanlabs.com';
+const BASE  = 'https://smartdeliveryapi.rajanhub.com';
 const AUTH  = `${BASE}/authservice`;
 const REST  = `${BASE}/restaurentservice`;
 const ORDER = `${BASE}/orderservice`;

@@ -188,7 +188,7 @@ Validated from live cluster using `kubectl get/describe` and runtime checks:
 - Jaeger API is reachable and lists mesh services (`order-service.smartdelivery`, `restaurent-service.smartdelivery`, `istio-ingressgateway.istio-system`).
 - Kiali API is reachable and reports Jaeger as connected external service.
 - Kiali graph shows `order-service -> restaurent-service` traffic edge with HTTP `200` responses.
-- ✅ **2026-03-17:** `https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain` returns `200 OK` over Cloudflare Full Strict HTTPS (no port number). TLS terminated at Istio IngressGateway using Cloudflare Origin Certificate (`smartdeliveryapi-tls` secret in `istio-system`).
+- ✅ **2026-03-17:** `https://smartdeliveryapi.rajanhub.com/orderservice/api/diagnostics/chain` returns `200 OK` over Cloudflare Full Strict HTTPS (no port number). TLS terminated at Istio IngressGateway using Cloudflare Origin Certificate (`smartdeliveryapi-tls` secret in `istio-system`).
 
 **Quick sequence (request + propagation path):**
 
@@ -283,7 +283,7 @@ Browser / API Client (HTTPS)
   → HTTPS port 443 → 46.62.150.44
   → svclb-istio-ingressgateway (hostPort 443 → pod port 443)
   → Istio IngressGateway (Envoy) — TLS termination with smartdeliveryapi-tls secret
-  → Gateway: istio-public-gateway   matches Host: smartdeliveryapi.rajanlabs.com (HTTPS server)
+  → Gateway: istio-public-gateway   matches Host: smartdeliveryapi.rajanhub.com (HTTPS server)
   → VirtualService: smartdelivery-vs prefix-routes + URI rewrite
   → ClusterIP service port 8080
   → Envoy sidecar → .NET container
@@ -296,7 +296,7 @@ Browser / API Client (HTTPS)
 
 | Step | Action |
 |------|--------|
-| 1 | In Cloudflare dashboard: SSL/TLS → Origin Server → Create Certificate. Hostnames: `*.rajanlabs.com`, `rajanlabs.com`. Validity: 15 years. Download `origin-cert.pem` and `origin-key.pem`. |
+| 1 | In Cloudflare dashboard: SSL/TLS → Origin Server → Create Certificate. Hostnames: `*.rajanhub.com`, `rajanhub.com`. Validity: 15 years. Download `origin-cert.pem` and `origin-key.pem`. |
 | 2 | Copy both files to the VPS (e.g. pipe over SSH: `Get-Content origin-cert.pem -Raw \| ssh root@46.62.150.44 "cat > /home/user/origin-cert.pem"`), then: |
 | | `kubectl create secret tls smartdeliveryapi-tls --cert=/home/theoneplusbot/origin-cert.pem --key=/home/theoneplusbot/origin-key.pem -n istio-system` |
 | | ⚠️ Use the **absolute path** — `~` expands to `/root/` when running as root, but files land in the SSH user's home dir. |
@@ -342,7 +342,7 @@ sequenceDiagram
     CF->>NIC: HTTPS GET :443 /orderservice/api/diagnostics/chain
     NIC->>SVCLB: nftables forwards hostPort 443
     SVCLB->>IG: port 8443 inside pod (TLS terminated by Envoy)
-    IG->>VS: Matches host smartdeliveryapi.rajanlabs.com
+    IG->>VS: Matches host smartdeliveryapi.rajanhub.com
     VS->>OE: prefix /orderservice → order-service:8080<br/>URI rewrite strips /orderservice prefix
     OE->>O: /api/diagnostics/chain
     O->>RE: HTTP GET restaurent-service:8080/api/diagnostics/ping
@@ -384,18 +384,18 @@ Defined in `istio-gateway-config.yaml`, applied in `istio-system`. Has **two ser
 
 ```bash
 # Public URL (Cloudflare HTTPS Full Strict — preferred)
-curl https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
+curl https://smartdeliveryapi.rajanhub.com/orderservice/api/diagnostics/chain
 
 # Direct NodePort HTTP (bypasses Cloudflare, bypasses TLS — for local diagnostics)
-curl -H "Host: smartdeliveryapi.rajanlabs.com" \
+curl -H "Host: smartdeliveryapi.rajanhub.com" \
      http://46.62.150.44:30774/orderservice/api/diagnostics/chain
 
 # From inside VPS on HTTP (bypasses Cloudflare — svclb hostPort 80)
-curl -H "Host: smartdeliveryapi.rajanlabs.com" http://localhost/orderservice/api/diagnostics/chain
+curl -H "Host: smartdeliveryapi.rajanhub.com" http://localhost/orderservice/api/diagnostics/chain
 
 # Verify TLS cert without Cloudflare proxy (set DNS to grey-cloud temporarily)
-curl -v --resolve smartdeliveryapi.rajanlabs.com:443:46.62.150.44 \
-     https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
+curl -v --resolve smartdeliveryapi.rajanhub.com:443:46.62.150.44 \
+     https://smartdeliveryapi.rajanhub.com/orderservice/api/diagnostics/chain
 ```
 
 ### Diagnostics chain check (for propagation)
@@ -403,7 +403,7 @@ curl -v --resolve smartdeliveryapi.rajanlabs.com:443:46.62.150.44 \
 ```bash
 # Full public path (Cloudflare → Istio → OrderService → RestaurantService)
 curl -H "X-Correlation-ID: diag-test-001" \
-     https://smartdeliveryapi.rajanlabs.com/orderservice/api/diagnostics/chain
+     https://smartdeliveryapi.rajanhub.com/orderservice/api/diagnostics/chain
 
 # Direct service port-forward (app-level check only, no Istio spans)
 curl -H "X-Correlation-ID: diag-test-001" \
