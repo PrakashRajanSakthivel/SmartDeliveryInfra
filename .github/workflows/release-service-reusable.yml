@@ -132,14 +132,24 @@ jobs:
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
             echo "✅ Using specific build #${{ inputs.build_run_id }}"
           else
-            echo "build_number=latest" >> $GITHUB_OUTPUT
-            echo "image_tag=latest" >> $GITHUB_OUTPUT
-            echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
-            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-            echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
-            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "✅ Using latest image tag"
+            echo "::error::No image to deploy - build_run_id was not supplied, and this run was not triggered by a completed build."
+            echo "The build workflows tag images only with their run id; nothing ever publishes :latest, so there is no safe fallback."
+            echo "Re-run with build_run_id set to the run id of the build that produced the image you want."
+            exit 1
           fi
+
+      # Confirm the tag resolves before touching the cluster. Otherwise a missing image only
+      # surfaces as ImagePullBackOff on a half-rolled deployment, after the manifests are applied
+      # and the previous good image reference has already been overwritten.
+      - name: Verify image exists in registry
+        run: |
+          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          IMAGE="${{ steps.build-info.outputs.image_name }}:${{ steps.build-info.outputs.image_tag }}"
+          if ! docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "::error::Image not found in registry: $IMAGE"
+            exit 1
+          fi
+          echo "Found $IMAGE"
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3

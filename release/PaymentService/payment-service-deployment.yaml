@@ -20,7 +20,7 @@ spec:
       - name: ghcr-pull-secret
       containers:
       - name: payment-service
-        image: ghcr.io/prakashrajansakthivel/paymentservice:latest
+        image: ghcr.io/prakashrajansakthivel/paymentservice:REPLACED_BY_CI
         ports:
         - containerPort: 8080
         resources:

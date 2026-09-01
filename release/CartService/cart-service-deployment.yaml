@@ -20,7 +20,7 @@ spec:
       - name: ghcr-pull-secret
       containers:
       - name: cart-service
-        image: ghcr.io/prakashrajansakthivel/cartservice:latest
+        image: ghcr.io/prakashrajansakthivel/cartservice:REPLACED_BY_CI
         ports:
         - containerPort: 8080
         resources:

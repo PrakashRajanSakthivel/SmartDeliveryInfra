@@ -20,7 +20,7 @@ spec:
       - name: ghcr-pull-secret
       containers:
       - name: order-service
-        image: ghcr.io/prakashrajansakthivel/orderservice:latest
+        image: ghcr.io/prakashrajansakthivel/orderservice:REPLACED_BY_CI
         ports:
         - containerPort: 8080
         resources:

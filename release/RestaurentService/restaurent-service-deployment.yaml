@@ -20,7 +20,7 @@ spec:
       - name: ghcr-pull-secret
       containers:
       - name: restaurent-service
-        image: ghcr.io/prakashrajansakthivel/smartdeliveryinfra/restaurentservice:latest
+        image: ghcr.io/prakashrajansakthivel/restaurentservice:REPLACED_BY_CI
         ports:
         - containerPort: 8080
         resources:
