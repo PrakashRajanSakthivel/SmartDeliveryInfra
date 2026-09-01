@@ -40,6 +40,14 @@ on:
       - 'release/RestaurentService/**'
       - '.github/workflows/release-restaurentservice.yml'
 
+
+# Releases share one Hetzner firewall rule: each opens port 6443 and closes it again with
+# `if: always()`. Run two at once and whichever finishes first shuts the API off for the
+# others mid-deploy. Serialise every release behind one group so that cannot happen.
+concurrency:
+  group: k3s-release
+  cancel-in-progress: false
+
 jobs:
   deploy:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
