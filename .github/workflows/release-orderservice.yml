@@ -12,10 +12,9 @@ on:
         - production
         - staging
       build_run_id:
-        description: 'Build run ID to deploy (optional - leave empty for latest)'
-        required: false
+        description: 'Build run ID to deploy - the run id of the Build workflow that pushed the image'
+        required: true
         type: string
-        default: ''
   workflow_run:
     workflows: ["Build and Push Order Service"]
     types:
