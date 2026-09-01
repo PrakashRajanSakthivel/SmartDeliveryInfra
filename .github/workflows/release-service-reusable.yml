@@ -51,6 +51,10 @@ on:
         required: false
         type: string
         default: ''
+      # Build workflow to resolve the newest successful run from when build_run_id is omitted.
+      build_workflow:
+        required: true
+        type: string
       trigger_source:
         required: false
         type: string
@@ -114,6 +118,8 @@ jobs:
 
       - name: Set build info
         id: build-info
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ inputs.trigger_source }}" = "workflow_run" ] && [ "${{ inputs.workflow_run_id }}" != "" ]; then
             echo "build_number=${{ inputs.workflow_run_number }}" >> $GITHUB_OUTPUT
@@ -132,10 +138,23 @@ jobs:
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
             echo "✅ Using specific build #${{ inputs.build_run_id }}"
           else
-            echo "::error::No image to deploy - build_run_id was not supplied, and this run was not triggered by a completed build."
-            echo "The build workflows tag images only with their run id; nothing ever publishes :latest, so there is no safe fallback."
-            echo "Re-run with build_run_id set to the run id of the build that produced the image you want."
-            exit 1
+            # No id given: deploy whatever the newest green build produced. Images are tagged with
+            # the run id that built them, so the run id IS the tag. Restricted to successful runs -
+            # a failed build may have pushed nothing, leaving a tag that does not resolve.
+            echo "No build_run_id given; resolving the newest successful ${{ inputs.build_workflow }} run..."
+            RESOLVED=$(gh run list --repo "${{ github.repository }}" --workflow="${{ inputs.build_workflow }}" --status=success --limit=1 --json databaseId --jq '.[0].databaseId // empty')
+            if [ -z "$RESOLVED" ]; then
+              echo "::error::No successful ${{ inputs.build_workflow }} run found, so there is no image to deploy."
+              echo "Run that build first, or pass build_run_id explicitly."
+              exit 1
+            fi
+            echo "build_number=$RESOLVED" >> $GITHUB_OUTPUT
+            echo "image_tag=$RESOLVED" >> $GITHUB_OUTPUT
+            echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+            echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "✅ Using newest successful build #$RESOLVED"
           fi
 
       # Confirm the tag resolves before touching the cluster. Otherwise a missing image only

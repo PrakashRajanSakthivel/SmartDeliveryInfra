@@ -12,9 +12,10 @@ on:
         - production
         - staging
       build_run_id:
-        description: 'Build run ID to deploy - the run id of the Build workflow that pushed the image'
-        required: true
+        description: 'Build run ID to deploy (leave empty to use the newest successful build)'
+        required: false
         type: string
+        default: ''
   workflow_run:
     workflows: ["Build and Push Payment Service"]
     types:
@@ -61,6 +62,7 @@ jobs:
       virtualservice_manifest: release/RestaurentService/smartdelivery-virtualservice.yaml
       environment: ${{ github.event.inputs.environment || 'production' }}
       build_run_id: ${{ github.event.inputs.build_run_id || '' }}
+      build_workflow: build-paymentservice.yml
       trigger_source: ${{ github.event_name }}
       workflow_run_id: ${{ github.event.workflow_run.id || '' }}
       workflow_run_number: ${{ github.event.workflow_run.run_number || '' }}
