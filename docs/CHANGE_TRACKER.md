@@ -377,6 +377,141 @@ Browser
 
 ---
 
+### CHG-006 — Domain migration to `rajanhub.com`, free-tier DB rescue, and CI/release repair
+
+| Field | Detail |
+|-------|--------|
+| **Date** | 2026-09-01 |
+| **Status** | ✅ Done |
+| **Branch** | `feature/ps/chaos` (commits `a4a6f6f` … `b920a64`) |
+| **Reason** | `rajanlabs.com` lapsed and was re-registered by a third party; the Azure SQL free allowance was being exhausted in ~55h; CI had been unable to reach the cluster since 2026-08-15. |
+
+#### Part 1 — Kubeconfig renewal
+
+The local kubeconfig failed with a 401, not an obvious TLS error. k3s had already rotated its
+`client-admin` cert on the server (valid to 2027-04-18); only the local copy was stale, still
+carrying the cert that expired 2026-08-15. No k3s restart was needed — it was a re-download:
+
+```bash
+ssh sd-master 'cat /etc/rancher/k3s/k3s.yaml' \
+  | sed 's#https://127.0.0.1:6443#https://46.62.150.44:6443#' > "$KUBECONFIG"
+```
+
+> `KUBECONFIG` points at `D:\dESKTOPBACKUP\Learn\kubeconfig - Copy`, **not** `~/.kube/config`.
+
+**Verified:** both nodes `Ready`.
+
+#### Part 2 — Domain migration `rajanlabs.com` → `rajanhub.com`
+
+The old domain had been re-registered by someone else and resolved to a host outside our control
+(`2.59.170.20`), so the deployed frontend was sending auth requests to a third party.
+
+| Item | Change |
+|---|---|
+| Istio Gateway | host → `smartdeliveryapi.rajanhub.com` (:80, :443) |
+| VirtualService | host + CORS origin → `smartdelivery.rajanhub.com` |
+| Origin TLS cert | new Cloudflare Origin cert, SANs `*.rajanhub.com`, valid to 2041 |
+| Frontend | `environment.prod.ts` rebuilt and redeployed to Azure SWA |
+| Docs | INFRA_SPEC, OBSERVABILITY_ARCH, CHAOS_TESTING updated |
+
+CHG-001…004 above deliberately retain the old hostname — they are dated records.
+
+**Verified:** API `200` through Cloudflare; deployed bundle contains zero `rajanlabs` references;
+CORS preflight from `https://smartdelivery.rajanhub.com` returns `200`.
+
+#### Part 3 — Free-tier database burn (root cause)
+
+All five databases hit the free allowance and paused. The cause was **not** external traffic — the
+ingress gateway showed none. `/health/ready` included the SqlServer health check (tagged `"ready"`),
+and the readiness probe ran every 15s across 4 services × 5 replicas = 20 pods = ~80 SQL logins per
+minute, continuously. With `autoPauseDelay` at 60 minutes the databases never saw an idle window,
+so they never paused and billed 0.5 vCore around the clock — ~55 hours to exhaust 100k vCore-sec.
+
+> This is about **continuity, not volume**. One pod probing every 30 minutes prevents auto-pause
+> just as effectively. Reducing replicas does not fix it.
+
+Fixed in two layers:
+
+- Manifests: `readinessProbe` → `/ping` (resolves no checks). Liveness already used `/health/live`.
+- Source: dropped the `"ready"` tag from the SQL check in `HealthCheckExtensions.cs`, so
+  `/health/ready` resolves to the `self` check only. The DB check still reports on `/health`.
+
+Keep `freeLimitExhaustionBehavior: AutoPause` — that is what prevents surprise bills.
+
+**Verified:** 2026-09-01, allowance renewed and all five databases reached `Paused` on their own.
+
+#### Part 4 — CI credentials
+
+The `KUBECONFIG` secret (last set 2026-03-02) predated the k3s cert rotation and had expired.
+Replaced with a least-privilege `gha-deployer` service-account token rather than the admin cert:
+
+```powershell
+.\base\compose.ps1 -SetSecret
+```
+
+`compose.ps1` had three defects, each producing a secret that looked fine and failed later: it took
+the CA from a service-account secret in `istio-system` (Istio's CA, not the k3s server CA — causing
+`x509: certificate signed by unknown authority`), minted a 1-hour token, and wrote the credential to
+disk. It now sources the CA from `kubectl config view --minify --raw`, requests 8760h, verifies the
+kubeconfig can reach the cluster before storing it, and pipes straight to `gh secret set`.
+
+`gha-deployer-role` existed only in the cluster and is now tracked in `base/gha.yaml`, with
+`customresourcedefinitions: [get, list]` added — the release probes for the Istio CRD via
+`if kubectl get crd ... 2>/dev/null`, so without it the VirtualService was silently skipped.
+
+**Credential hygiene** (this repo is public): removed the `cat kubeconfig` debug step that printed
+the credential into every run log; untracked `base/gha-kubeconfig.yaml`; gitignored `token.txt`,
+`kubeconfig`, and the origin PEMs.
+
+#### Part 5 — Release pipeline defects
+
+| Defect | Fix |
+|---|---|
+| Omitting `build_run_id` set the literal tag `:latest`, which no build publishes — it rolled all five services onto year-old images lacking `/ping` and `/health/live` (both 404 → liveness killed them). The input described itself as *"optional - leave empty for latest"*, so the documented path was the dangerous one. | Resolve the newest **successful** run of the service's build workflow via `gh run list`. |
+| Parallel releases share one Hetzner firewall rule; each opens port 6443 and closes it with `if: always()`, so the first to finish revoked API access from the rest mid-deploy. | Shared `concurrency: group: k3s-release`, `cancel-in-progress: false`. |
+| A bad tag surfaced only as ImagePullBackOff *after* manifests were applied and the last good image reference overwritten. | `docker manifest inspect` before anything touches the cluster. |
+| Manifests carried `image: ...:latest` as the CI placeholder. | Changed to `:REPLACED_BY_CI`, so a stray local apply fails with a self-explaining name. |
+
+> Only the rolling update's own caution kept the API serving through this — old pods were never torn
+> down because the new ones never became ready.
+
+#### Part 6 — PaymentDb schema gap
+
+`payment-service` returned `Invalid object name 'PaymentIntents'` (SQL error 208). The migration
+`20260318192317_InitialCreate` creates that table but had never been applied: on the last migration
+run (2026-07-09) the Payment step was **skipped**. Applied via the migration pipeline with only
+`migrate_payment=true`.
+
+This also explains why payment-service was the outlier throughout — no probes, 291 restarts over 16h.
+
+#### Current state (verified 2026-09-01)
+
+| Service | Image tag | Ready |
+|---|---|---|
+| auth-service | `33418089145` | 2/2 |
+| cart-service | `33418097244` | 1/1 |
+| order-service | `33418104912` | 1/1 |
+| payment-service | `33418112520` | 3/3 |
+| restaurent-service | `33418120293` | 1/1 |
+
+All pods `2/2 Running`; API `200` via Cloudflare; all five databases `Paused` (auto-pause working).
+
+#### Still open
+
+1. Cloudflare SSL mode is **Full**, not **Full (strict)** — the origin cert is now correct, so
+   switching is safe and closes the unauthenticated-origin gap.
+2. Revoke the old `rajanlabs` Cloudflare Origin certificate; delete the local `origin-*.pem`.
+3. Admin access still depends on allow-listing a dynamic home IP. `base/update-my-ip.ps1` replaces
+   the IP on rules it owns (unlike `open-firewall-port.ps1`, which appends and leaves stale entries),
+   but the real fix is a tailnet on `sd-master` and closing 2222/6443 entirely.
+4. `Restaurant`, `Order` and `Cart` migrations were also skipped on the 2026-07-09 run — verify their
+   schemas match their migrations folders before a code path hits a missing table.
+5. `Microsoft.OpenApi 2.4.1` carries a known high-severity advisory (GHSA-v5pm-xwqc-g5wc).
+6. Seed credentials `admin/password123` and `testuser/password` are hardcoded in `AuthDbContext.cs`,
+   and `appsettings.json` holds the SQL password and JWT signing key in plaintext.
+
+---
+
 ## Pending / Future Changes
 
 | ID | Description | Status |
@@ -385,18 +520,26 @@ Browser
 | CHG-003 | HTTPS via Let's Encrypt (certbot + nginx) | 🔲 Planned |
 | CHG-004 | Enable Cloudflare proxy (orange cloud) after HTTPS | 🔲 Planned |
 | CHG-005 | Set Istio mTLS to STRICT mode | 🔲 Future |
+| CHG-006 | Domain migration to rajanhub.com, free-tier DB rescue, CI/release repair | ✅ Done |
 
 ---
 
-## Current Cluster State (as of 2026-03-08)
+## Current Cluster State (as of 2026-09-01)
 
 | Component | State |
 |-----------|-------|
-| Node IP | `46.62.150.44` |
-| IngressGateway NodePort | `30774` |
-| Gateway hostname | `api.smartdelivery.local` (pre CHG-001) |
-| VirtualService hostname | `api.smartdelivery.local` (pre CHG-001) |
-| Cloudflare DNS | `smartdeliveryapi.rajanlabs.com` → `46.62.150.44` ✅ Added |
-| mTLS | Permissive |
-| Firewall port 30774 | Must be open in Hetzner for external access |
-| All 5 services | Running (`2/2` with Envoy sidecar) |
+| Nodes | `sd-master` 46.62.150.44 / 10.0.0.2, `sd-worker-0` 62.238.11.224 / 10.0.0.4 — both `Ready`, k3s v1.33.3 |
+| Public API hostname | `smartdeliveryapi.rajanhub.com` (Cloudflare proxied → 46.62.150.44) |
+| Frontend hostname | `smartdelivery.rajanhub.com` (CNAME → Azure SWA `smartdelivery-frontend`, DNS-only) |
+| Gateway | `istio-system/istio-public-gateway` — :80 and :443, cred `smartdeliveryapi-tls` |
+| Origin TLS cert | Cloudflare Origin, SANs `*.rajanhub.com` + `rajanhub.com`, expires 2041-08-27 |
+| Cloudflare SSL mode | **Full** — not yet Full (strict); see CHG-006 "Still open" |
+| IngressGateway NodePort | `30774` (HTTP), `31271` (HTTPS) |
+| mTLS | Permissive (CHG-005 still future) |
+| Readiness probe | `/ping` on all services — must never call SQL, see CHG-006 Part 3 |
+| Liveness probe | `/health/live` |
+| Databases | 5 on `smartdeliverypoc01`, serverless free tier, `AutoPause` on exhaustion |
+| Cluster kubeconfig (local) | k3s admin cert, expires 2027-04-18 |
+| CI credential | `gha-deployer` SA token in the `KUBECONFIG` repo secret, minted 2026-08-31 |
+| Admin access | SSH 2222 + API 6443 allow-listed to a *dynamic* home IP — run `base/update-my-ip.ps1` when they time out |
+| All 5 services | Running `2/2` on pinned image tags (see CHG-006) |
