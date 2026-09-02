@@ -498,8 +498,11 @@ All pods `2/2 Running`; API `200` via Cloudflare; all five databases `Paused` (a
 
 #### Still open
 
-1. Cloudflare SSL mode is **Full**, not **Full (strict)** — the origin cert is now correct, so
-   switching is safe and closes the unauthenticated-origin gap.
+1. Cloudflare SSL mode stays at **Full**, not Full (strict). The origin cert is correct, so the API
+   alone could take strict — but the setting is zone-wide and `rajanhub.com` hosts other sites whose
+   origins may not present valid certificates, which would start returning 526. Decided 2026-09-01:
+   leave as is. The Cloudflare→origin leg is therefore encrypted but not authenticated. If this needs
+   tightening later, do it per-hostname (Configuration Rules) rather than flipping the zone.
 2. Revoke the old `rajanlabs` Cloudflare Origin certificate; delete the local `origin-*.pem`.
 3. Admin access still depends on allow-listing a dynamic home IP. `base/update-my-ip.ps1` replaces
    the IP on rules it owns (unlike `open-firewall-port.ps1`, which appends and leaves stale entries),
