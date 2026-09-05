@@ -1,0 +1,53 @@
+# =============================================================================
+# Chaos Experiment 2 — HTTP Abort (503) on order-service
+#
+# Injects an immediate HTTP 503 response on 100% of requests to order-service.
+#
+# IMPORTANT: gateways must include both the Istio IngressGateway AND "mesh"
+# so the abort fires for BOTH external traffic (k6 via ingress) AND internal
+# sidecar-to-sidecar calls. Omitting gateways defaults to "mesh" only, which
+# skips IngressGateway-originated requests entirely — the abort won't be visible
+# in Kiali or k6 results.
+#
+# Apply:   kubectl apply -f release/chaos/order-service-abort.yaml
+# Remove:  kubectl delete -f release/chaos/order-service-abort.yaml
+# =============================================================================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: order-service-chaos-abort
+  namespace: smartdelivery
+  labels:
+    chaos: "true"
+    experiment: abort
+spec:
+  hosts:
+  - order-service.smartdelivery.svc.cluster.local
+  gateways:
+  - istio-system/istio-public-gateway
+  - mesh
+  http:
+  - match:
+    - uri:
+        prefix: /orderservice/
+    fault:
+      abort:
+        httpStatus: 503
+        percentage:
+          value: 100
+    route:
+    - destination:
+        host: order-service.smartdelivery.svc.cluster.local
+        port:
+          number: 8080
+  - fault:
+      abort:
+        httpStatus: 503
+        percentage:
+          value: 100
+    route:
+    - destination:
+        host: order-service.smartdelivery.svc.cluster.local
+        port:
+          number: 8080
+

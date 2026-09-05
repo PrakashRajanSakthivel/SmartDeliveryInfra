@@ -51,6 +51,10 @@ on:
         required: false
         type: string
         default: ''
+      # Build workflow to resolve the newest successful run from when build_run_id is omitted.
+      build_workflow:
+        required: true
+        type: string
       trigger_source:
         required: false
         type: string
@@ -114,6 +118,8 @@ jobs:
 
       - name: Set build info
         id: build-info
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ inputs.trigger_source }}" = "workflow_run" ] && [ "${{ inputs.workflow_run_id }}" != "" ]; then
             echo "build_number=${{ inputs.workflow_run_number }}" >> $GITHUB_OUTPUT
@@ -132,14 +138,37 @@ jobs:
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
             echo "✅ Using specific build #${{ inputs.build_run_id }}"
           else
-            echo "build_number=latest" >> $GITHUB_OUTPUT
-            echo "image_tag=latest" >> $GITHUB_OUTPUT
+            # No id given: deploy whatever the newest green build produced. Images are tagged with
+            # the run id that built them, so the run id IS the tag. Restricted to successful runs -
+            # a failed build may have pushed nothing, leaving a tag that does not resolve.
+            echo "No build_run_id given; resolving the newest successful ${{ inputs.build_workflow }} run..."
+            RESOLVED=$(gh run list --repo "${{ github.repository }}" --workflow="${{ inputs.build_workflow }}" --status=success --limit=1 --json databaseId --jq '.[0].databaseId // empty')
+            if [ -z "$RESOLVED" ]; then
+              echo "::error::No successful ${{ inputs.build_workflow }} run found, so there is no image to deploy."
+              echo "Run that build first, or pass build_run_id explicitly."
+              exit 1
+            fi
+            echo "build_number=$RESOLVED" >> $GITHUB_OUTPUT
+            echo "image_tag=$RESOLVED" >> $GITHUB_OUTPUT
             echo "image_name=${{ inputs.image_name }}" >> $GITHUB_OUTPUT
             echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
             echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "✅ Using latest image tag"
+            echo "✅ Using newest successful build #$RESOLVED"
           fi
+
+      # Confirm the tag resolves before touching the cluster. Otherwise a missing image only
+      # surfaces as ImagePullBackOff on a half-rolled deployment, after the manifests are applied
+      # and the previous good image reference has already been overwritten.
+      - name: Verify image exists in registry
+        run: |
+          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          IMAGE="${{ steps.build-info.outputs.image_name }}:${{ steps.build-info.outputs.image_tag }}"
+          if ! docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "::error::Image not found in registry: $IMAGE"
+            exit 1
+          fi
+          echo "Found $IMAGE"
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
@@ -208,9 +237,21 @@ jobs:
             sed -i 's|__RESTAURANT_DB_CONNECTION__|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
           fi
 
-          # JWT secret key — applied to all services (shared signing key across the mesh)
-          if [ -n "${{ secrets.JWT_SECRET_KEY }}" ]; then
-            sed -i 's|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+          # JWT secret key — applied to all services (shared signing key across the mesh).
+          # Never skip this substitution: an unset secret would leave the literal
+          # __JWT_SECRET_KEY__ in the ConfigMap and the services would happily sign and
+          # accept tokens with a placeholder that is public in this repo.
+          if [ -z "${{ secrets.JWT_SECRET_KEY }}" ]; then
+            echo "::error::JWT_SECRET_KEY secret is empty or unset — refusing to deploy a ConfigMap with a placeholder signing key."
+            exit 1
+          fi
+          sed -i 's|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+
+          # Nothing may reach the cluster still carrying a __PLACEHOLDER__.
+          if grep -q '__[A-Z_]*__' /tmp/configmap-template.yaml; then
+            echo "::error::ConfigMap still contains unsubstituted placeholders:"
+            grep -o '__[A-Z_]*__' /tmp/configmap-template.yaml | sort -u
+            exit 1
           fi
 
           kubectl --kubeconfig=kubeconfig apply -f /tmp/configmap-template.yaml

@@ -1,3 +1,10 @@
+# RBAC for the GitHub Actions deployer.
+#
+# Mint a token for this service account and store it as the KUBECONFIG repo secret:
+#   kubectl create token gha-deployer -n kube-system --duration=8760h
+#
+# Prefer this over the k3s admin kubeconfig: that one carries system:masters, and its client
+# cert expires yearly (it lapsed on 2026-08-15 and silently broke the release pipelines).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -25,5 +32,59 @@ roleRef:
   kind: ClusterRole
   name: gha-namespace-reader
   apiGroup: rbac.authorization.k8s.io
-
-  ##kubectl create token gha-deployer -n kube-system --duration=8760h
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gha-deployer-role
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.istio.io"]
+  resources: ["virtualservices"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch", "create", "patch", "update"]
+# The release pipeline probes for the Istio CRD before applying a VirtualService
+# (release-service-reusable.yml). That check is written as `if kubectl get crd ... 2>/dev/null`,
+# so without read access here it fails silently and the VirtualService is skipped rather than
+# erroring — read-only, and it keeps that step honest.
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gha-deployer-binding
+subjects:
+- kind: ServiceAccount
+  name: gha-deployer
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: gha-deployer-role
+  apiGroup: rbac.authorization.k8s.io

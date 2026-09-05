@@ -12,7 +12,7 @@ on:
         - production
         - staging
       build_run_id:
-        description: 'Build run ID to deploy (optional - leave empty for latest)'
+        description: 'Build run ID to deploy (leave empty to use the newest successful build)'
         required: false
         type: string
         default: ''
@@ -42,6 +42,14 @@ on:
       - 'release/CartService/**'
       - '.github/workflows/release-cartservice.yml'
 
+
+# Releases share one Hetzner firewall rule: each opens port 6443 and closes it again with
+# `if: always()`. Run two at once and whichever finishes first shuts the API off for the
+# others mid-deploy. Serialise every release behind one group so that cannot happen.
+concurrency:
+  group: k3s-release
+  cancel-in-progress: false
+
 jobs:
   deploy:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
@@ -62,6 +70,7 @@ jobs:
       virtualservice_manifest: release/RestaurentService/smartdelivery-virtualservice.yaml
       environment: ${{ github.event.inputs.environment || 'production' }}
       build_run_id: ${{ github.event.inputs.build_run_id || '' }}
+      build_workflow: build-cartservice.yml
       trigger_source: ${{ github.event_name }}
       workflow_run_id: ${{ github.event.workflow_run.id || '' }}
       workflow_run_number: ${{ github.event.workflow_run.run_number || '' }}

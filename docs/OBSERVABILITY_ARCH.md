@@ -371,7 +371,7 @@ flowchart LR
     NE_SRC[node-exporter\ninstall in kube-system] --> AFTER
     AFTER --> FULL_DASH[Full Utilization\nDashboard in Grafana]
     NOW --> FULL_DASH
-    BLOCK --> LT_RUN[k6 Load Test\nsmartdeliveryapi.rajanlabs.com]
+    BLOCK --> LT_RUN[k6 Load Test\nsmartdeliveryapi.rajanhub.com]
 
     style KSM_SRC fill:#d4edda,stroke:#155724,color:#000
     style NE_SRC fill:#d4edda,stroke:#155724,color:#000

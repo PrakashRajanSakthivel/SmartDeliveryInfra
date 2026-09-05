@@ -38,7 +38,6 @@ jobs:
         with:
           repository: PrakashRajanSakthivel/SmartDelivery
           ref: ${{ inputs.source_ref || 'feature/ui_integration' }}
-          token: ${{ secrets.CODE_REPO_TOKEN }}
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4

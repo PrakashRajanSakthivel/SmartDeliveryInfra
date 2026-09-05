@@ -10,3 +10,11 @@
 .vs/Learn/FileContentIndex/2e68d79a-85a8-4acf-ac0a-c22e7c40fa5e.vsidx
 .vs/
 base/worker-ssh-setup.txt
+
+# Never commit minted cluster credentials (this repo is public)
+token.txt
+*.token
+kubeconfig
+gha-kubeconfig.yaml
+origin-cert.pem
+origin-key.pem

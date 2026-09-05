@@ -24,15 +24,14 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
 
-      - name: Debug kubeconfig file
+      # Never `cat` the kubeconfig: it writes the credential in plaintext into the run
+      # log, where it stays for anyone with repo read access. `config view` redacts by
+      # default, so ask it for just the server URL.
+      - name: Check kubeconfig shape
         run: |
-          echo "=== KUBECONFIG FILE CONTENT ==="
-          cat kubeconfig
-          echo "=== END KUBECONFIG ==="
-          echo "=== FILE SIZE ==="
-          ls -la kubeconfig
-          echo "=== KUBECONFIG VALIDATION ==="
-          kubectl --kubeconfig=kubeconfig config view
+          test -s kubeconfig || { echo "kubeconfig secret is empty"; exit 1; }
+          kubectl --kubeconfig=kubeconfig config view --minify --output 'jsonpath={.clusters[0].cluster.server}'
+          echo
 
       - name: Open Hetzner Firewall port 6443 to all IPs
         env:
