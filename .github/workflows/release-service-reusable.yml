@@ -237,9 +237,21 @@ jobs:
             sed -i 's|__RESTAURANT_DB_CONNECTION__|${{ secrets.RESTAURANT_DB_CONNECTION_STRING }}|g' /tmp/configmap-template.yaml
           fi
 
-          # JWT secret key — applied to all services (shared signing key across the mesh)
-          if [ -n "${{ secrets.JWT_SECRET_KEY }}" ]; then
-            sed -i 's|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+          # JWT secret key — applied to all services (shared signing key across the mesh).
+          # Never skip this substitution: an unset secret would leave the literal
+          # __JWT_SECRET_KEY__ in the ConfigMap and the services would happily sign and
+          # accept tokens with a placeholder that is public in this repo.
+          if [ -z "${{ secrets.JWT_SECRET_KEY }}" ]; then
+            echo "::error::JWT_SECRET_KEY secret is empty or unset — refusing to deploy a ConfigMap with a placeholder signing key."
+            exit 1
+          fi
+          sed -i 's|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g' /tmp/configmap-template.yaml
+
+          # Nothing may reach the cluster still carrying a __PLACEHOLDER__.
+          if grep -q '__[A-Z_]*__' /tmp/configmap-template.yaml; then
+            echo "::error::ConfigMap still contains unsubstituted placeholders:"
+            grep -o '__[A-Z_]*__' /tmp/configmap-template.yaml | sort -u
+            exit 1
           fi
 
           kubectl --kubeconfig=kubeconfig apply -f /tmp/configmap-template.yaml
